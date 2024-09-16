@@ -5,6 +5,11 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <vector>
+#include <cassert>
+#include <memory>
+#include <algorithm>
+#include <numeric>
 
 #include <mpi.h>
 
@@ -14,11 +19,14 @@
 #include <shmem.h>
 #include <shmemx.h>
 
+#include <cuda.h>
+#include <cuda_runtime.h>
 #include <cusparse_v2.h>
 
 #include "utils/Timer.hpp"
 #include "utils/Log.hpp"
 #include "utils/colors.h"
+#include "utils/MPITypes.h"
 
 #define CUDA_CHECK(call) {                                                 \
     cudaError_t err = call;                                                \
@@ -40,20 +48,25 @@
 
 #define ERROR(msg) {std::cerr<<msg<<std::endl; exit(1);}
 
+#define NVSHMEM_FREE_SAFE(ptr) {if (ptr!=nullptr) nvshmem_free(ptr);}
+
 
 namespace symmetria {
 
-    int my_pe;
-    int my_pe_node;
-    int n_pes;
-    int n_pes_node;
 
-    Timer * timer;
-    Log * logptr;
+/* GLOBALS */
+int my_pe;
+int my_pe_node;
+int n_pes;
+int n_pes_node;
 
-    cusparseHandle_t cusparse_handle;
+Timer * timer;
+Log * logptr;
 
-    nvshmemx_init_attr_t attr;
+cusparseHandle_t cusparse_handle;
+
+nvshmemx_init_attr_t attr;
+
 
 }
 

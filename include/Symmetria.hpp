@@ -2,6 +2,10 @@
 #define SYMMETRIA_HPP
 
 #include "common.h"
+#include "DistSpMat.hpp"
+#include "matrix_market_io.h"
+
+#include "kernels/spsyrk.cuh"
 
 namespace symmetria {
 
