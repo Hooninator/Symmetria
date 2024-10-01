@@ -104,6 +104,31 @@ public:
     }
 
 
+    /* Non blocking broadcast of tile of matrix that lives on root.
+     * Results are stored in the vectors passed into the function.
+     */
+    void ibcast_tile(const int root, 
+                     std::vector<DT>& vals,
+                     std::vector<IT>& colinds,
+                     std::vector<IT>& rowptrs,
+                     std::vector<MPI_Request>& requests)
+    {
+
+        MPI_Ibcast(vals.data(), vals.size(), MPIType<DT>(),
+                   root, proc_map->get_world_comm(),
+                   &requests[0]);
+
+        MPI_Ibcast(colinds.data(), vals.size(), MPIType<IT>(),
+                   root, proc_map->get_world_comm(),
+                   &requests[1]);
+
+        MPI_Ibcast(rowptrs.data(), vals.size(), MPIType<IT>(),
+                   root, proc_map->get_world_comm(),
+                   &requests[2]);
+
+    }
+
+
     ~DistSpMat()
     {
         NVSHMEM_FREE_SAFE(ds_vals);

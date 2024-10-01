@@ -4,9 +4,11 @@
 #include "../common.h"
 #include "../DistSpMat.hpp"
 
+#include "galatic_spgemm.cuh"
+
 
 namespace symmetria {
-template <typename IT, typename DT>
+template <typename SR, typename IT, typename DT>
 DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, DT>& A)
 {
 
@@ -14,6 +16,13 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     auto proc_map = A.proc_map;
     const int p = proc_map->get_n_procs();
 
+    /* These vectors will be resized each iteration so they can hold
+     * local tiles.
+     */
+    std::vector<DT> vals;
+    std::vector<IT> colinds;
+    std::vector<IT> rowptrs;
+    
 
     /* Need array of communicators for each subset of the processes that are broadcast to at each stage */
     std::vector<MPI_Comm> comms(p);
@@ -30,16 +39,30 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         MPI_Group_incl(world_group, (p - i), procs_in_group.data() + i, &group);
         MPI_Comm_create(MPI_COMM_WORLD, world_group, &comms[i]);
     }
+
+    /* Create transposed version of my local block row */
         
 
     /* Main loop */
     for (int k=0; k<p; k++)
     {
 
-        /* Non-blocking broadcast of block row k */
+        /* Non-blocking broadcast of tranposed block row k */
+
+        /* If first iteration, overlap broadcasts with computing diagonal blocks */
+
+        /* Wait on bcast completion */
+
+        /* If rank > k, multiply the tile I just received */
+
+        /* Push output tuples to host vector */
 
     }
 
+
+    /* Merge output tuples */
+
+    /* Return final matrix */
 
 }
 
