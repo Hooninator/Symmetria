@@ -19,8 +19,10 @@ public:
 
     DistSpMat(){}
 
-    DistSpMat(const IT m, const IT n, const IT nnz):
-        m(m), n(n), nnz(nnz)
+    DistSpMat(const IT m, const IT n, const IT nnz,
+              std::shared_ptr<ProcMap> proc_map):
+        m(m), n(n), nnz(nnz), proc_map(proc_map),
+        tile_sizes(proc_map->get_n_procs())
     {
     }
 
@@ -31,6 +33,12 @@ public:
         assert(m > 0 && loc_m > 0);
 
         this->loc_nnz = triples->get_nnz();
+
+        /* Allgather to get global tile sizes array */
+        MPI_Allgather(&(this->loc_nnz), 1, MPIType<IT>(), 
+                        this->tile_sizes.data(), 
+                        this->proc_map->get_n_procs(),
+                        MPIType<IT>(), this->proc_map->get_world_comm());
         
         this->ds_vals = ((DT *)nvshmem_malloc(this->loc_nnz * sizeof(DT)));
 
@@ -117,6 +125,8 @@ protected:
     DT * ds_vals;
     IT * ds_colinds, * ds_rowptrs;
 
+    std::vector<int> tile_sizes;
+
 };
 
 
@@ -132,17 +142,12 @@ class DistSpMat1DBlockRow : public DistSpMat<IT, DT>
 
 public:
 
-    DistSpMat1DBlockRow(const int px, const MPI_Comm comm)
-    {
-        this->proc_map = std::make_shared<ProcMap>(px, comm);
-    }
-
 
     DistSpMat1DBlockRow(const IT m, const IT n, const IT nnz,
-                        const int px, const MPI_Comm comm):
-        DistSpMat<IT, DT>(m, n, nnz)
+                        std::shared_ptr<ProcMap> proc_map):
+        DistSpMat<IT, DT>(m, n, nnz, proc_map)
     {
-        this->proc_map = std::make_shared<ProcMap>(px, comm);
+        set_loc_dims();
     }
 
 
