@@ -7,6 +7,7 @@
 #include "../source/device/Multiply.cuh"
 
 #include "transpose_csr.cuh"
+#include "dCSR_utils.cuh"
 
 
 namespace symmetria {
@@ -17,7 +18,6 @@ void local_spsyrk(dCSR<DT>& A, dCSR<DT>& A_t, dCSR<DT>& C)
 
 
 }
-
 
 
 

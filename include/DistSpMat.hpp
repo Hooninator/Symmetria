@@ -140,6 +140,14 @@ public:
     inline void set_cols(const IT _n) {n=_n;}
     inline void set_nnz(const IT _nnz) {nnz=_nnz;}
 
+    inline IT get_loc_rows() const {return loc_m;}
+    inline IT get_loc_cols() const {return loc_n;}
+    inline IT get_loc_nnz() const {return loc_nnz;}
+
+    inline DT * get_vals() const {return ds_vals;}
+    inline IT * get_colinds() const {return ds_colinds;}
+    inline IT * get_rowptrs() const {return ds_rowptrs;}
+
     std::shared_ptr<ProcMap> proc_map;
 
 protected:
