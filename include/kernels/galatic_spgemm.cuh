@@ -6,12 +6,16 @@
 #include "SemiRingInterface.h"
 #include "../source/device/Multiply.cuh"
 
+#include "transpose_csr.cuh"
+
 
 namespace symmetria {
 
 template <typename SR, typename DT, typename IT>
-void local_spgemm()
+void local_spsyrk(dCSR<DT>& A, dCSR<DT>& A_t, dCSR<DT>& C)
 {
+
+
 }
 
 
