@@ -49,12 +49,12 @@ __global__ void transpose_kernel(const DT * d_vals, const IT * d_colinds, const 
 
     if (wid < rows) {
         const IT start = d_rowptrs[wid];
-        const IT end = d_rowptrs[wid+1]-1;
+        const IT end = d_rowptrs[wid+1];
         for (int l=start+lid; l<end; l += warpSize)
         {
             if (l < end) {
                 const IT j = d_colinds[l];
-                const IT val = d_vals[l];
+                const DT val = d_vals[l];
                 const IT idx_tr = (atomicAdd(d_offsets + j, 1) + d_rowptrs_tr[j]);
                 d_vals_tr[idx_tr] = val;
                 d_colinds_tr[idx_tr] = wid;
@@ -94,6 +94,7 @@ dCSR<T> transpose_outofplace(const dCSR<T>& A)
 
     CUDA_CHECK(cudaDeviceSynchronize()); 
     CUDA_CHECK(cudaFree(d_offsets));
+    CUDA_CHECK(cudaDeviceSynchronize()); 
 
     return A_t;
 }

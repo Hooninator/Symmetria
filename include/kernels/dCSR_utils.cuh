@@ -1,6 +1,8 @@
 #ifndef DCSR_UTILS_CUH
 #define DCSR_UTILS_CUH
 
+#include "../common.h"
+
 #include "dCSR.cuh"
 #include "SemiRingInterface.h"
 #include "../source/device/Multiply.cuh"
@@ -15,16 +17,47 @@
 
 namespace symmetria {
 
-template <typename T, typename Mat>
+template <typename T, typename Mat, typename I=unsigned int>
 void make_dCSR_from_distspmat(Mat& A_dist, dCSR<T>& A)
 {
     A.rows = A_dist.get_loc_rows();
     A.cols = A_dist.get_loc_cols();
     A.nnz = A_dist.get_loc_nnz();
     A.data = A_dist.get_vals();
-    A.col_ids = (unsigned int *)A_dist.get_colinds();
-    A.row_offsets = (unsigned int *)A_dist.get_rowptrs();
+    A.col_ids = (I*)A_dist.get_colinds();
+    A.row_offsets = (I*)A_dist.get_rowptrs();
 }
+
+
+template <typename T, typename Mat, typename I=unsigned int>
+dCSR<T> make_dCSR_from_distspmat_outofplace(Mat& A_dist)
+{
+    dCSR<T> A;
+    A.rows = A_dist.get_loc_rows();
+    A.cols = A_dist.get_loc_cols();
+    A.nnz = A_dist.get_loc_nnz();
+
+    A.alloc(A.rows, A.cols, A.nnz);
+
+    CUDA_CHECK(cudaMemcpy(A.data, A_dist.get_vals(), sizeof(T) * A.nnz,
+                            cudaMemcpyDeviceToDevice));
+    CUDA_CHECK(cudaMemcpy(A.col_ids, A_dist.get_colinds(), sizeof(I) * A.nnz,
+                            cudaMemcpyDeviceToDevice));
+    CUDA_CHECK(cudaMemcpy(A.row_offsets, A_dist.get_rowptrs(), sizeof(I) * (A.rows + 1),
+                            cudaMemcpyDeviceToDevice));
+
+    return A;
+}
+
+
+template <typename T>
+void dump_dCSR_to_log(Log * logfile, dCSR<T>& A)
+{
+    logfile->log_device_array(A.data, A.nnz, "Values:");
+    logfile->log_device_array(A.col_ids, A.nnz, "Colinds:");
+    logfile->log_device_array(A.row_offsets, A.rows+1, "Rowptrs:");
+}
+
 
 
 template <typename T>

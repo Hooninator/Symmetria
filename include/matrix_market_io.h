@@ -284,7 +284,7 @@ void read_mm(const char * path, Mat& A)
 
 
 #ifdef DEBUG
-    //local_tuples->dump_to_log(logptr);
+    local_tuples->dump_to_log(logptr);
 #endif
 
 

@@ -15,14 +15,20 @@
 #define TEST_CHECK(condition) \
     do { \
         if (!(condition)) { \
-            std::cerr <<RED<< "Error: Condition failed at " << __FILE__ << ":" << __LINE__ << RESET<<std::endl; \
+            std::cerr <<RED<< "Error: Assertion failed at " << __FILE__ << ":" << __LINE__ << RESET<<std::endl; \
             std::abort(); \
         } \
     } while (0)
 
-#define TEST_SUCCESS(name) std::cout<<GREEN<<"Test "<<name<<" passed!"<<RESET<<std::endl;
+#define TEST_SUCCESS(name) \
+    do { \
+        MPI_Barrier(MPI_COMM_WORLD); \
+        int rank; \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+        if (rank==0) std::cout<<GREEN<<"Test "<<name<<" passed!"<<RESET<<std::endl; \
+    } while (0)
 
-#define TEST_LOG(msg) \
+#define TEST_PRINT(msg) \
     do { \
         int rank; \
         MPI_Comm_rank(MPI_COMM_WORLD, &rank); \

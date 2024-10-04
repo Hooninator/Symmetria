@@ -24,6 +24,11 @@ public:
     }
 
     
+    Log(const char * name)
+    {
+        ofs.open(name);
+    }
+    
 
     template <typename T>
     void log_vec(std::vector<T>& vec, const char * prefix)
@@ -33,6 +38,9 @@ public:
                         [this](auto&  elem) {this->ofs<<elem<<",";});
         ofs<<std::endl;
     }
+
+
+    void log_array() {}
     
 
     template <typename T>
@@ -42,6 +50,15 @@ public:
         std::for_each(vec.begin(), vec.end(), 
                         [this](auto&  elem) {this->ofs<<elem<<'\n';});
         ofs<<suffix<<std::endl;
+    }
+
+
+    template <typename T>
+    void log_device_array(T * d_arr, size_t n, const char * prefix) 
+    {
+        std::vector<T> h_arr(n);
+        (cudaMemcpy(h_arr.data(), d_arr, sizeof(T)*n, cudaMemcpyDeviceToHost));
+        log_vec(h_arr, prefix);
     }
 
     

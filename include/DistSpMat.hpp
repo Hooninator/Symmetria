@@ -51,7 +51,7 @@ public:
 
         this->ds_colinds = ((IT *)nvshmem_malloc(this->loc_nnz * sizeof(IT)));
     
-        this->ds_rowptrs = ((IT *)nvshmem_malloc((this->loc_m+1) * sizeof(DT)));
+        this->ds_rowptrs = ((IT *)nvshmem_malloc((this->loc_m+1) * sizeof(IT)));
 
         if (this->loc_nnz==0)
             return;
@@ -68,7 +68,6 @@ public:
         // This is essential, otherwise setting rowptrs array is difficult
         triples->rowsort();
 
-        //TODO: Use std::generate for this
         IT prev_row = std::get<0>(triples->at(0));
 
         for (IT j=0; j<=prev_row; j++) {
@@ -216,6 +215,7 @@ public:
     {
         return std::get<0>(t) / this->loc_m;
     }
+
 
 };
 
