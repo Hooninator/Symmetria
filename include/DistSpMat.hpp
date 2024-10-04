@@ -70,12 +70,14 @@ public:
 
         //TODO: Use std::generate for this
         IT prev_row = std::get<0>(triples->at(0));
+
         for (IT j=0; j<=prev_row; j++) {
             h_rowptrs->emplace_back(0);
         }
 
+
         for (IT i=0; i<triples->size(); i++) {
-            IT row = std::get<1>(triples->at(i));
+            IT row = std::get<0>(triples->at(i));
 
             if (row != prev_row) {
 
@@ -89,8 +91,10 @@ public:
             h_vals->emplace_back(std::get<2>(triples->at(i)));
             h_colinds->emplace_back(std::get<1>(triples->at(i)));
 
+
         }
         h_rowptrs->emplace_back(triples->size());
+
 
 #ifdef DEBUG_DIST_SPMAT
         //logptr->print_vec(*h_rowptrs, "rowptrs", "End rowptrs");
