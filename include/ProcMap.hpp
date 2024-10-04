@@ -14,7 +14,7 @@ public:
 
     // 1D constructor
     ProcMap(const int x, const MPI_Comm comm):
-        px(x), py(1), pz(1), world_comm(comm)
+        px(x), py(1), pz(1), world_comm(comm), grid_size(x)
     {
 
         MPI_Comm_size(comm, &n_procs);
@@ -29,7 +29,7 @@ public:
 
     // 2D constructor
     ProcMap(const int x, const int y, const MPI_Comm comm):
-        px(x), py(y), pz(1), world_comm(comm)
+        px(x), py(y), pz(1), world_comm(comm), grid_size(x*y)
     {
 
         MPI_Comm_size(comm, &n_procs);
@@ -45,7 +45,7 @@ public:
     // 3D constructor
     ProcMap(const int x, const int y, const int z,
              const MPI_Comm comm):
-        px(x), py(y), pz(z), world_comm(comm)
+        px(x), py(y), pz(z), world_comm(comm), grid_size(x*y*z)
     {
 
         MPI_Comm_size(comm, &n_procs);
@@ -104,7 +104,7 @@ public:
     inline MPI_Comm get_grid_comm() const {return grid_comm;}
 
     
-    inline int get_n_procs() const {return rank;}
+    inline int get_n_procs() const {return n_procs;}
     inline int get_grid_size() const {return grid_size;}
     inline int get_px() const {return px;}
     inline int get_py() const {return py;}

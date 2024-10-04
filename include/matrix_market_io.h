@@ -99,35 +99,38 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
     using Triple = std::tuple<IT, IT, DT>;
     using CooTripleVec = std::vector<Triple>;
 
-#ifdef DEBUG_DIST_SPMAT
-    std::cout<<"Distributing tuples"<<std::endl;
     MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
     /* Setup send buffers */
-    std::vector<CooTripleVec> send_tuples(A.proc_map->get_n_procs());
-    std::vector<int> send_sizes(A.proc_map->get_n_procs());
-    std::vector<int> send_displs(A.proc_map->get_n_procs());
+    std::vector<CooTripleVec> send_tuples(A.proc_map->get_grid_size());
+    std::vector<int> send_sizes(A.proc_map->get_grid_size());
+    std::vector<int> send_displs(A.proc_map->get_grid_size());
+
+    DEBUG_PRINT("Send vector length: " + STR(send_sizes.size()));
+
+#ifdef DEBUG
+    //logptr->OFS()<<"Local tuples before redistributing"<<std::endl;
+    //tuples->dump_to_log(logptr);
+#endif
 
     for (auto& tuple : tuples->get_triples()) {
-        /* Map tuple to correct process in cube */
+        /* Map tuple to correct process */
         int target = A.map_triple(tuple);
 
-#ifdef DEBUG_DIST_SPMAT
-        //logptr->OFS()<<target<<std::endl;
+#ifdef DEBUG
+        //logptr->OFS()<<"Target: "<<target<<std::endl;
 #endif
 
         send_tuples[target].push_back(tuple);
         send_sizes[target]++;
     }
 
-#ifdef DEBUG_DIST_SPMAT
-    logptr->print_vec(send_sizes, "Send sizes");
+#ifdef DEBUG
+    logptr->log_vec(send_sizes, "Send sizes");
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-    CooTripleVec * send_buf = new CooTripleVec(
-                                                 std::reduce(send_sizes.begin(),
+    CooTripleVec * send_buf = new CooTripleVec(std::reduce(send_sizes.begin(),
                                                  send_sizes.end(),
                                                  0));
 
@@ -135,8 +138,8 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
         send_displs[i] = send_displs[i-1] + send_sizes[i-1];
     }
 
-#ifdef DEBUG_DIST_SPMAT
-    logptr->print_vec(send_displs, "Send displs");
+#ifdef DEBUG
+    logptr->log_vec(send_displs, "Send displs");
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
@@ -145,13 +148,10 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
                     send_buf->begin() + send_displs[i]);
     }
 
-#ifdef DEBUG_DIST_SPMAT
-    std::cout<<"Setup send buffers"<<std::endl;
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
+    DEBUG_PRINT("Setup send buffers");
 
-    std::vector<int> recv_sizes(A.proc_map->get_n_procs());
-    std::vector<int> recv_displs(A.proc_map->get_n_procs());
+    std::vector<int> recv_sizes(A.proc_map->get_grid_size());
+    std::vector<int> recv_displs(A.proc_map->get_grid_size());
     MPI_Alltoall((void*)send_sizes.data(), 1, MPI_INT,
                     (void*)recv_sizes.data(), 1, MPI_INT,
                     MPI_COMM_WORLD);
@@ -160,16 +160,15 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
         recv_displs[i] = recv_displs[i-1] + recv_sizes[i-1];
     }
 
-#ifdef DEBUG_DIST_SPMAT
-    std::cout<<"Did setup alltoall"<<std::endl;
-    logptr->print_vec(recv_sizes, "Recv sizes");
-    //logptr->print_tuple_vec(*(send_buf), "Send buf");
+    DEBUG_PRINT("Setup receive buffers");
+
+#ifdef DEBUG
+    logptr->log_vec(recv_sizes, "Recv sizes");
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
 
-    CooTripleVec * recv_tuples = new CooTripleVec(
-                                                    std::reduce(recv_sizes.begin(),
+    CooTripleVec * recv_tuples = new CooTripleVec(std::reduce(recv_sizes.begin(),
                                                     recv_sizes.end(),
                                                     0));
     MPI_Alltoallv(send_buf->data(), send_sizes.data(), send_displs.data(),
@@ -225,6 +224,8 @@ void read_mm(const char * path, Mat& A)
         mm_file.close();
     }
 
+    DEBUG_PRINT("Read header");
+
     MPI_Bcast(send_buf, 4, MPIType<IT>(), 0, MPI_COMM_WORLD);
 
     A.set_rows(send_buf[0]);
@@ -237,16 +238,19 @@ void read_mm(const char * path, Mat& A)
 
     delete[] send_buf;
 
+    DEBUG_PRINT("Beginning IO on " + std::string(path));
+
     /* Begin MPI IO */
     MPI_File file_handle;
     MPI_File_open(MPI_COMM_WORLD, path, MPI_MODE_RDONLY, MPI_INFO_NULL, &file_handle);
+
+    DEBUG_PRINT("File opened");
 
     /* Compute offset info */
     MPI_Offset total_bytes;
     MPI_File_get_size(file_handle, &total_bytes);
 
-    if (my_pe==0)
-        std::cout<<"total bytes: "<<total_bytes<<std::endl;
+    DEBUG_PRINT("Total bytes: " + STR(total_bytes));
 
     MPI_Offset my_offset = (header_offset) + (( ( total_bytes - header_offset ) / n_pes) * my_pe);
 
@@ -259,17 +263,30 @@ void read_mm(const char * path, Mat& A)
     MPI_Barrier(MPI_COMM_WORLD);
 
 
-#ifdef DEBUG_DIST_SPMAT
+#ifdef DEBUG
     logptr->OFS()<<"Partition of file"<<std::endl;
     logptr->OFS()<<std::string(buf, num_bytes)<<std::endl;
 #endif
 
     /* Parse my lines */
     auto read_tuples = parse_mm_lines<IT, DT>(num_bytes, my_offset, buf, file_handle);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
     delete[] buf;
+
+    DEBUG_PRINT("Parsed lines");
 
     /* Distribute tuples according to matrix distribution */
     auto local_tuples = distribute_tuples<IT, DT>(read_tuples, A);
+
+    DEBUG_PRINT("Distributed tuples");
+
+
+#ifdef DEBUG
+    //local_tuples->dump_to_log(logptr);
+#endif
+
 
     /* Map global tuple indices to local indices */
     std::transform(local_tuples->begin(), local_tuples->end(), local_tuples->begin(),
@@ -277,16 +294,16 @@ void read_mm(const char * path, Mat& A)
 
     /* Set local csr arrays */
     A.set_from_coo(local_tuples);
-
-#ifdef DEBUG_DIST_SPMAT
-    std::cout<<"Set csr ptrs"<<std::endl;
     MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
     delete local_tuples;
 
-    MPI_File_close(&file_handle);
+    DEBUG_PRINT("Set csr ptrs");
+
     MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_File_close(&file_handle);
+
+    DEBUG_PRINT("Done reading matrix");
 
 }
 

@@ -18,7 +18,7 @@ public:
 
 
     CooTriples(const std::vector<Triple>& triples):
-        triples(triples)
+        triples(triples), nnz(triples.size())
     {
     }
 
@@ -47,6 +47,7 @@ public:
                 triples.emplace_back(row, col, val);
             }
         }
+        this->nnz = triples.size();
     }
 
 
@@ -91,6 +92,22 @@ public:
             return lhs.first==rhs.first && lhs.second==rhs.second;
         }
     };
+
+
+    std::string to_str(const Triple& t1)
+    {
+        std::stringstream ss;
+        ss<<"("<<std::get<0>(t1)<<","<<std::get<1>(t1)<<","<<std::get<2>(t1)<<")";
+        return ss.str();
+    }
+
+
+    void dump_to_log(Log * logfile)
+    {
+        std::for_each(triples.begin(), triples.end(), [=](auto const& t)
+            { logfile->OFS()<<to_str(t)<<std::endl; } );
+    }
+
 
     std::vector<Triple> get_triples() {return triples;}
     inline IT get_nnz() {return this->nnz;}

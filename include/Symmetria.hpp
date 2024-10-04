@@ -8,6 +8,7 @@
 
 #include "kernels/spsyrk.cuh"
 
+
 namespace symmetria {
 
 void symmetria_init()

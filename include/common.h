@@ -28,6 +28,8 @@
 #include "utils/colors.h"
 #include "utils/MPITypes.h"
 
+#define DEBUG
+
 #define CUDA_CHECK(call) {                                                 \
     cudaError_t err = call;                                                \
     if (err != cudaSuccess) {                                              \
@@ -49,6 +51,21 @@
 #define ERROR(msg) {std::cerr<<msg<<std::endl; exit(1);}
 
 #define NVSHMEM_FREE_SAFE(ptr) {if (ptr!=nullptr) nvshmem_free(ptr);}
+
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) do {\
+        int rank;\
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);\
+        if (rank==0) std::cout<<BRIGHT_CYAN<<msg<<RESET<<std::endl;\
+        MPI_Barrier(MPI_COMM_WORLD);\
+    } while (0)
+#define DEBUG_PRINT_ALL(msg) {std::cout<<BRIGHT_CYAN<<msg<<RESET<<std::endl; MPI_Barrier(MPI_COMM_WORLD);}
+#else
+#define DEBUG_PRINT(msg)
+#define DEBUG_PRINT_ALL(msg)
+#endif
+
+#define STR(x) std::to_string(x)
 
 
 namespace symmetria {

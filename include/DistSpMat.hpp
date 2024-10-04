@@ -22,7 +22,7 @@ public:
     DistSpMat(const IT m, const IT n, const IT nnz,
               std::shared_ptr<ProcMap> proc_map):
         m(m), n(n), nnz(nnz), proc_map(proc_map),
-        tile_sizes(proc_map->get_n_procs())
+        tile_sizes(proc_map->get_grid_size())
     {
     }
 
@@ -34,11 +34,18 @@ public:
 
         this->loc_nnz = triples->get_nnz();
 
+        DEBUG_PRINT_ALL("Local nnz " + STR(this->loc_nnz));
+        DEBUG_PRINT_ALL("Local rows " + STR(this->loc_m));
+
         /* Allgather to get global tile sizes array */
-        MPI_Allgather(&(this->loc_nnz), 1, MPIType<IT>(), 
-                        this->tile_sizes.data(), 
-                        this->proc_map->get_n_procs(),
-                        MPIType<IT>(), this->proc_map->get_world_comm());
+        IT send = this->loc_nnz;
+        MPI_Allgather(&(send), 1, MPIType<IT>(), 
+                        this->tile_sizes.data(), 1, MPIType<IT>(), 
+                        this->proc_map->get_world_comm());
+
+#ifdef DEBUG
+        logptr->log_vec(this->tile_sizes, "Tile sizes");
+#endif
         
         this->ds_vals = ((DT *)nvshmem_malloc(this->loc_nnz * sizeof(DT)));
 
@@ -95,12 +102,12 @@ public:
                                 cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaMemcpyAsync(this->ds_rowptrs, h_rowptrs->data(), h_rowptrs->size()*sizeof(IT),
                                 cudaMemcpyHostToDevice));
-        delete h_vals;
-        delete h_colinds;
-        delete h_rowptrs;
 
         CUDA_CHECK(cudaDeviceSynchronize());
 
+        delete h_vals;
+        delete h_colinds;
+        delete h_rowptrs;
     }
 
 
@@ -158,7 +165,7 @@ protected:
     DT * ds_vals;
     IT * ds_colinds, * ds_rowptrs;
 
-    std::vector<int> tile_sizes;
+    std::vector<IT> tile_sizes;
 
 };
 
