@@ -41,7 +41,7 @@ using namespace nlohmann;
 
 namespace symmetria {
 
-namespace testing {
+namespace test_utils {
 
 struct TestParams
 {
@@ -78,9 +78,19 @@ std::vector<TestParams> parse_test_json(const std::string json_path)
 }
 
 
+template<typename Vec1, typename Vec2, typename Comp>
+bool compare_vectors(Vec1& v1, Vec2& v2, Comp& comp)
+{
+    assert(v1.size() == v2.size());
+    std::vector<bool> comp_results(v1.size());
+    std::transform(v1.begin(), v1.end(),
+                    v2.begin(), 
+                    comp_results.begin(), comp);
+    return std::reduce(comp_results.begin(), comp_results.end(), true, std::logical_and<>{});
 }
 
 
+}
 }
 
 

@@ -12,6 +12,7 @@
 
 namespace symmetria {
 
+    /*
 template <typename IT, typename DT>
 struct DeviceTriple 
 {
@@ -24,6 +25,7 @@ struct DeviceTriple
 
 };
 
+
 template <typename IT, typename DT>
 std::ostream& operator<<(std::ostream& os, DeviceTriple<IT, DT>& t)
 {
@@ -31,11 +33,12 @@ std::ostream& operator<<(std::ostream& os, DeviceTriple<IT, DT>& t)
     return os;
 }
 
+*/
 
 
 template <typename IT, typename IT2, typename DT>
 __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs, 
-                                DeviceTriple<IT, DT> * d_triples,
+                                std::tuple<IT, IT, DT> * d_triples,
                                 const IT2 rows)
 {
     const uint32_t tid = threadIdx.x + blockDim.x * blockIdx.x;
@@ -43,12 +46,13 @@ __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs,
     const uint32_t lid = tid % warpSize;
 
     if (wid < rows) {
-
         IT start = d_rowptrs[wid];
         IT end = d_rowptrs[wid+1];
         for (int j = start + lid; j < end; j += warpSize)
         {
-            d_triples[j] = {wid, d_colinds[j], d_vals[j]};
+            std::get<0>(d_triples[j]) = wid;
+            std::get<1>(d_triples[j]) = d_colinds[j];
+            std::get<2>(d_triples[j]) = d_vals[j];
         }
     }
 }
@@ -56,8 +60,10 @@ __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs,
 
 /* Call GALATIC SpGEMM, convert output to tuples, return pointer to tuples on device */
 template <typename SR, typename IT, typename DT>
-DeviceTriple<IT, DT> * local_spgemm(dCSR<DT>& A, dCSR<DT>& A_t, IT& nnz)
+std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t, IT& nnz)
 {
+
+    using Triple = std::tuple<IT, IT, DT>;
 
 
     //Note: I don't know what any of this is
@@ -85,8 +91,8 @@ DeviceTriple<IT, DT> * local_spgemm(dCSR<DT>& A, dCSR<DT>& A_t, IT& nnz)
     nnz = C.nnz;
 
     /* Convert to device triples */
-    DeviceTriple<IT, DT> * d_triples;
-    CUDA_CHECK(cudaMalloc(&d_triples, sizeof(DeviceTriple<IT, DT>)*nnz));
+    Triple * d_triples;
+    CUDA_CHECK(cudaMalloc(&d_triples, sizeof(Triple)*nnz));
     const uint32_t tpb = 256;
     const uint32_t wpb = tpb / 32;
     const uint32_t blocks = std::ceil( static_cast<double>(C.rows) / static_cast<double>(wpb) );
