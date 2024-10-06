@@ -4,7 +4,7 @@
 #include "common.h"
 #include "DistSpMat.hpp"
 #include "matrix_market_io.h"
-#include "semirings.h"
+#include "semirings.cuh"
 
 #include "kernels/spsyrk.cuh"
 

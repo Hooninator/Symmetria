@@ -4,7 +4,7 @@
 #include "../common.h"
 #include "../DistSpMat.hpp"
 
-#include "galatic_spgemm.cuh"
+#include "local_mult.cuh"
 
 
 namespace symmetria {

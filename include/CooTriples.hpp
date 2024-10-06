@@ -24,6 +24,15 @@ public:
 
 
     // Convert from CSR on the host
+    CooTriples(const DT * h_vals,
+                const IT * h_colinds,
+                const IT * h_rowptrs,
+                const IT nnz, const IT rows)
+    {
+        this->csr_to_coo_host(h_vals, h_colinds, h_rowptrs, nnz, rows);
+    }
+
+
     CooTriples(std::vector<DT> * h_vals,
                 std::vector<IT> * h_colinds,
                 std::vector<IT> * h_rowptrs)
@@ -48,6 +57,23 @@ public:
             }
         }
         this->nnz = triples.size();
+    }
+
+
+    void csr_to_coo_host(const DT * h_vals,
+                        const IT * h_colinds,
+                        const IT * h_rowptrs,
+                        const IT nnz, const IT rows)
+    {
+        triples.reserve(nnz);
+        for (int j=0; j<rows; j++)
+        {
+            for (int i=h_rowptrs[j]; i<h_rowptrs[j+1]; i++)
+            {
+                triples.emplace_back(j, h_colinds[i], h_vals[i]);
+            }
+        }
+        this->nnz = nnz;
     }
 
 
@@ -104,6 +130,14 @@ public:
 
     void dump_to_log(Log * logfile)
     {
+        std::for_each(triples.begin(), triples.end(), [=](auto const& t)
+            { logfile->OFS()<<to_str(t)<<std::endl; } );
+    }
+
+
+    void dump_to_log(Log * logfile, const char * prefix)
+    {
+        logfile->OFS()<<prefix<<std::endl;
         std::for_each(triples.begin(), triples.end(), [=](auto const& t)
             { logfile->OFS()<<to_str(t)<<std::endl; } );
     }

@@ -14,6 +14,8 @@
 
 #define TEST_CHECK(condition) \
     do { \
+        bool eval_condition = condition; \
+        MPI_Allreduce(MPI_IN_PLACE, &eval_condition, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);\
         if (!(condition)) { \
             std::cerr <<RED<< "Error: Assertion failed at " << __FILE__ << ":" << __LINE__ << RESET<<std::endl; \
             std::abort(); \

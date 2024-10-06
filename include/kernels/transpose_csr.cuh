@@ -52,13 +52,11 @@ __global__ void transpose_kernel(const DT * d_vals, const IT * d_colinds, const 
         const IT end = d_rowptrs[wid+1];
         for (int l=start+lid; l<end; l += warpSize)
         {
-            if (l < end) {
-                const IT j = d_colinds[l];
-                const DT val = d_vals[l];
-                const IT idx_tr = (atomicAdd(d_offsets + j, 1) + d_rowptrs_tr[j]);
-                d_vals_tr[idx_tr] = val;
-                d_colinds_tr[idx_tr] = wid;
-            }
+            const IT j = d_colinds[l];
+            const DT val = d_vals[l];
+            const IT idx_tr = (atomicAdd(d_offsets + j, 1) + d_rowptrs_tr[j]);
+            d_vals_tr[idx_tr] = val;
+            d_colinds_tr[idx_tr] = wid;
         }
     }
 
@@ -85,7 +83,7 @@ dCSR<T> transpose_outofplace(const dCSR<T>& A)
 
     const uint32_t warp_size = 32;
     const uint32_t tpb = 512;
-    const uint32_t wpb = 512 / warp_size;
+    const uint32_t wpb = tpb / warp_size;
     const uint32_t blocks = std::ceil( A.rows / static_cast<double>(wpb));
     transpose_kernel<<<blocks, tpb>>>(A.data, A.col_ids, A.row_offsets,
                                        A_t.data, A_t.col_ids, A_t.row_offsets, 

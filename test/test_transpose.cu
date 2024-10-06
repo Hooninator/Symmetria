@@ -113,7 +113,6 @@ int main(int argc, char ** argv)
 #endif
 
         bool is_correct = (A_t == A_dcsr_correct);
-
         TEST_CHECK(is_correct);
 
         dealloc(A_t);
