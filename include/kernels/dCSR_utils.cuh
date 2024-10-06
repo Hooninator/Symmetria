@@ -73,7 +73,8 @@ bool operator==(const dCSR<T>& lhs, const dCSR<T>& rhs)
         return false;
     }
 
-    /* Make sure nonzeros are correct */
+
+    /* Make sure nonzeros are close */
 
     thrust::device_ptr<T> lhs_vals = thrust::device_pointer_cast(lhs.data);
     thrust::device_ptr<T> rhs_vals = thrust::device_pointer_cast(rhs.data);

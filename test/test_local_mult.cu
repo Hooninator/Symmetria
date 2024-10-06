@@ -5,54 +5,35 @@
 #include "SemiRingInterface.h"
 #include "../source/device/Multiply.cuh"
 
-#include "test_utils.cuh"
+#include "TestDriver.hpp"
 
 //#define DEBUG_TEST
 #define EPS 0.001
 
 using namespace symmetria;
+using namespace symmetria::testing;
 
-template <typename IT, typename DT>
-bool compare(CooTriples<IT, DT>& h_correct_triples, std::tuple<IT, IT, DT> * d_triples, const IT nnz)
+
+class TestLocalMult : public TestDriver<TestLocalMult>
 {
+public:
 
-    std::vector<std::tuple<IT, IT, DT>> h_actual_triples(nnz);
-
-    CUDA_CHECK(cudaMemcpy(h_actual_triples.data(), d_triples, sizeof(std::tuple<IT, IT, DT>)* nnz,
-                            cudaMemcpyDeviceToHost));
-
-    auto triple_comp = [](auto& t1, auto& t2) 
+    bool run_test_impl(TestParams& test)
     {
-        return (std::get<0>(t1)==std::get<0>(t2) &&
-                std::get<1>(t1)==std::get<1>(t2) &&
-                fabs(std::get<2>(t1) - std::get<2>(t2)) < EPS);
-    };
+        typedef unsigned int IT;
+        typedef double DT;
 
-    return test_utils::compare_vectors(h_correct_triples, h_actual_triples, triple_comp);
-}
-
-
-void run_test();
-
-
-int main(int argc, char ** argv)
-{
-    typedef unsigned int IT;
-    typedef double DT;
-
-    symmetria_init();
-
-    {
-
-        const uint32_t m = 16;
-        const uint32_t n = 16;
-        const uint32_t nnz = 16;
+        const uint32_t m = test.rows;
+        const uint32_t n = test.cols;
+        const uint32_t nnz = test.nnz;
+        const std::string name(test.name);
+        const std::string path(std::string("../test/test_matrices/")+test.name);
 
         std::shared_ptr<ProcMap> proc_map = std::make_shared<ProcMap>(n_pes, MPI_COMM_WORLD);
 
         /* Read in matrix */
         DistSpMat1DBlockRow<IT, DT> A(m, n, nnz, proc_map);
-        symmetria::io::read_mm<IT, DT>("../test/test_matrices/n16.mtx", A);
+        symmetria::io::read_mm<IT, DT>(path.c_str(), A);
         MPI_Barrier(MPI_COMM_WORLD);
 
         /* Fetch local submatrices */
@@ -87,10 +68,47 @@ int main(int argc, char ** argv)
         TEST_CHECK(compare(h_C_triples, d_C, nnz_C));
 
         CUDA_CHECK(cudaFree(d_C));
+
+        return true;
     }
 
-    TEST_SUCCESS("Local Mult");
 
+    template <typename IT, typename DT>
+    bool compare(CooTriples<IT, DT>& h_correct_triples, 
+                 std::tuple<IT, IT, DT> * d_triples, const IT nnz)
+    {
+
+        std::vector<std::tuple<IT, IT, DT>> h_actual_triples(nnz);
+
+        CUDA_CHECK(cudaMemcpy(h_actual_triples.data(), d_triples, sizeof(std::tuple<IT, IT, DT>)* nnz,
+                                cudaMemcpyDeviceToHost));
+
+        auto triple_comp = [](auto& t1, auto& t2) 
+        {
+            return (std::get<0>(t1)==std::get<0>(t2) &&
+                    std::get<1>(t1)==std::get<1>(t2) &&
+                    fabs(std::get<2>(t1) - std::get<2>(t2)) < EPS);
+        };
+
+        return testing::compare_vectors(h_correct_triples, h_actual_triples, triple_comp);
+    }
+
+
+};
+
+
+
+
+
+
+int main(int argc, char ** argv)
+{
+
+    symmetria_init();
+    {
+        TestDriver<TestLocalMult> manager("../test/test_configs.json", "Local Multiply");
+        manager.run_tests();
+    }
     symmetria_finalize();
 	
     return 0;

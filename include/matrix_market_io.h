@@ -31,13 +31,6 @@ CooTriples<IT, DT> * parse_mm_lines(int num_bytes,
 
     delete[] buf2;
 
-    //buf[num_bytes - 1] = '\0'; 
-
-#ifdef DEBUG_DIST_SPMAT
-    logptr->OFS()<<"Partition of file after line filling"<<std::endl;
-    logptr->OFS()<<std::string(buf, num_bytes)<<std::endl;
-#endif
-
     char * curr = buf;
 
     /* Advance until we find a newline unless I'm rank 0, which always starts at the start of a line */
@@ -53,11 +46,6 @@ CooTriples<IT, DT> * parse_mm_lines(int num_bytes,
     
     std::string buf_str(curr);
     
-
-#ifdef DEBUG_DIST_SPMAT
-    logptr->OFS()<<"Parsing lines"<<std::endl;
-#endif
-
     // Find end of this line
     size_t pos = 0;
     size_t next_eol = buf_str.find('\n', pos);
@@ -67,27 +55,18 @@ CooTriples<IT, DT> * parse_mm_lines(int num_bytes,
         
         // Copy line into std::string 
         std::string line(curr+pos, line_len);
-#ifdef DEBUG_DIST_SPMAT
-//            logptr->OFS()<<line;
-#endif
         std::istringstream iss(line);
 
         // Make the tuple
         IT row; IT col; DT val;
         iss>>row>>col>>val;
         tuples.emplace_back(row-1,col-1,val); //mm files are 1 indexed TODO: Always?
-#ifdef DEBUG_DIST_SPMAT
-        //logptr->OFS()<<row<<","<<col<<","<<val<<std::endl;
-#endif
 
         // Advance to start of next line and find the end of the next line
         pos = (next_eol + 1);
         prev_eol = next_eol;
         next_eol = buf_str.find('\n', pos);
         line_len = (next_eol - prev_eol);
-#ifdef DEBUG_DIST_SPMAT
-//           logptr->OFS()<<"pos "<<pos<<", next_eol "<<next_eol<<", line_len "<<line_len<<std::endl;
-#endif
     }
     return new CooTriples<IT,DT>(tuples);
 }
@@ -108,18 +87,9 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
 
     DEBUG_PRINT("Send vector length: " + STR(send_sizes.size()));
 
-#ifdef DEBUG
-    //logptr->OFS()<<"Local tuples before redistributing"<<std::endl;
-    //tuples->dump_to_log(logptr);
-#endif
-
     for (auto& tuple : tuples->get_triples()) {
         /* Map tuple to correct process */
         int target = A.map_triple(tuple);
-
-#ifdef DEBUG
-        //logptr->OFS()<<"Target: "<<target<<std::endl;
-#endif
 
         send_tuples[target].push_back(tuple);
         send_sizes[target]++;
@@ -176,13 +146,7 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
                     recv_tuples->data(), recv_sizes.data(), recv_displs.data(),
                     MPIType<Triple>(),
                     MPI_COMM_WORLD);
-#ifdef DEBUG_DIST_SPMAT
-    std::cout<<"Did alltoallv"<<std::endl;
-    logptr->print_tuple_vec(*(recv_tuples), "Local tuples final", "End local tuples final");
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
     delete send_buf;
-
     return new CooTriples<IT, DT>(*recv_tuples);
 }
 

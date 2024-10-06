@@ -37,7 +37,9 @@ thrust::device_vector<IT1> count_nnz_per_col(const IT2 * d_colinds,
 }
 
 
-/* Perform the actual transpose. One warp per row */
+/* Perform the actual transpose. One warp per row*/
+//NOTE: The nonzeros of each row are not guaranteed to be sorted by column index
+//this could potentially create performance issues in the merging phase
 template <typename DT, typename IT>
 __global__ void transpose_kernel(const DT * d_vals, const IT * d_colinds, const IT * d_rowptrs,
                                 DT * d_vals_tr, IT * d_colinds_tr, IT * d_rowptrs_tr, unsigned int * d_offsets,

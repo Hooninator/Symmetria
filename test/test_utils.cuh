@@ -6,11 +6,11 @@
 #include <iostream>
 #include <fstream>
 
-#include <nlohmann/json.hpp>
-
 #define RED         "\033[31m"
 #define GREEN       "\033[32m"
+#define BRIGHT_YELLOW   "\033[93m"
 #define RESET       "\033[0m"
+
 
 #define TEST_CHECK(condition) \
     do { \
@@ -18,9 +18,10 @@
         MPI_Allreduce(MPI_IN_PLACE, &eval_condition, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);\
         if (!(condition)) { \
             std::cerr <<RED<< "Error: Assertion failed at " << __FILE__ << ":" << __LINE__ << RESET<<std::endl; \
-            std::abort(); \
+            return false;\
         } \
     } while (0)
+
 
 #define TEST_SUCCESS(name) \
     do { \
@@ -30,6 +31,16 @@
         if (rank==0) std::cout<<GREEN<<"Test "<<name<<" passed!"<<RESET<<std::endl; \
     } while (0)
 
+
+#define TEST_FAIL() \
+    do { \
+        MPI_Barrier(MPI_COMM_WORLD); \
+        int rank; \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+        if (rank==0) std::cout<<RED<<"Test failed"<<RESET<<std::endl; \
+    } while (0)
+
+
 #define TEST_PRINT(msg) \
     do { \
         int rank; \
@@ -37,56 +48,24 @@
         if (rank==0) std::cout<<msg<<std::endl; \
     } while (0)
 
-using namespace nlohmann;
+
+
 
 namespace symmetria {
-
-namespace test_utils {
-
-struct TestParams
-{
-    uint64_t rows, cols, nnz;
-    std::string name;
-};
-
-
-std::vector<TestParams> parse_test_json(const std::string json_path)
-{
-
-    std::vector<TestParams> tests;
-
-    std::ifstream infile(json_path);
-
-    json json_data;
-    infile >> json_data;
-
-    try {
-        for (auto const& record : json_data)
-        {
-            TestParams params;
-            params.rows = record.at("rows").get<uint64_t>();
-            params.cols = record.at("cols").get<uint64_t>();
-            params.nnz = record.at("nnz").get<uint64_t>();
-            params.name= record.at("name").get<std::string>();
-            tests.push_back(params);
-        }
-    } catch(json::exception& e) {
-        std::cerr<<"Error parsing JSON: "<<e.what() <<std::endl;
-    }
-
-    return tests;
-}
-
+namespace testing {
 
 template<typename Vec1, typename Vec2, typename Comp>
 bool compare_vectors(Vec1& v1, Vec2& v2, Comp& comp)
 {
     assert(v1.size() == v2.size());
-    std::vector<bool> comp_results(v1.size());
-    std::transform(v1.begin(), v1.end(),
-                    v2.begin(), 
-                    comp_results.begin(), comp);
-    return std::reduce(comp_results.begin(), comp_results.end(), true, std::logical_and<>{});
+    return std::equal(v1.begin(), v1.end(), v2.begin(), comp);
+}
+
+template<typename Vec1, typename Vec2>
+bool compare_vectors(Vec1& v1, Vec2& v2)
+{
+    assert(v1.size() == v2.size());
+    return std::equal(v1.begin(), v1.end(), v2.begin());
 }
 
 
