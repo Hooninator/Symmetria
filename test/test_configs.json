@@ -1,12 +1,12 @@
 [
     {
-        "name": "n16.mtx" ,
+        "name": "n16" ,
         "rows": 16 ,
         "cols": 16 ,
         "nnz": 16
     },
     {
-        "name": "n1000.mtx" ,
+        "name": "n1000" ,
         "rows": 1000 ,
         "cols": 1000 ,
         "nnz": 10000

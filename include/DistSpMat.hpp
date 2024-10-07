@@ -140,6 +140,9 @@ public:
 
     inline std::vector<IT> get_tile_sizes() const {return tile_sizes;}
 
+    template <typename IT2, typename DT2>
+    friend bool operator==(DistSpMat<IT2, DT2>& lhs, DistSpMat<IT2, DT2>& rhs);
+
     std::shared_ptr<ProcMap> proc_map;
 
 protected:
@@ -201,5 +204,21 @@ public:
 
 };
 
+
+template <typename IT, typename DT>
+bool operator==(DistSpMat<IT, DT>& lhs, DistSpMat<IT, DT>& rhs) 
+{
+    auto A_lhs = make_dCSR_from_distspmat<DT>(lhs);
+    auto A_rhs = make_dCSR_from_distspmat<DT>(rhs);
+
+    bool equals = A_lhs == A_rhs;
+
+    MPI_Allreduce(MPI_IN_PLACE, &equals, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+
+    clear_dCSR_ptrs(A_lhs);
+    clear_dCSR_ptrs(A_rhs);
+
+    return equals;
+}
 }
 #endif

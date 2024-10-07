@@ -87,6 +87,44 @@ public:
     }
 
 
+    /* Use std::sort then multithreaded linear scan */
+    void sort_merge()
+    {
+        assert(triples.size() > 0);
+
+        auto col_comp = [](Triple& t1, Triple& t2)
+        {
+            return std::get<1>(t1) < std::get<1>(t2);
+        };
+
+        std::sort(triples.begin(), triples.end(),
+                    col_comp);
+
+        std::vector<Triple> merged;
+        merged.reserve(triples.size()); //overestimate
+
+        //TODO: Parallelize
+        IT prev_row = std::get<0>(triples[0]);
+        IT prev_col = std::get<1>(triples[0]);
+        DT acc = std::get<2>(triples[0]);
+        for (int i=1; i<triples.size(); i++)
+        {
+            if (prev_col == std::get<1>(triples[i])) {
+                acc += std::get<2>(triples[i]);
+            } else {
+                merged.emplace_back(prev_row, prev_col, acc);
+                prev_row = std::get<0>(triples[i]);
+                prev_col = std::get<1>(triples[i]);
+                acc = std::get<2>(triples[i]);
+            }
+        };
+        merged.emplace_back(prev_row, prev_col, acc);
+
+        this->triples = merged;
+
+    }
+
+
     iterator begin() { return this->triples.begin();}
     iterator end() {return this->triples.end();} 
     const_iterator begin() const { return this->triples.begin();}

@@ -28,7 +28,8 @@ def generate_matrix_market(size, non_zeros):
     matrix_transpose = np.transpose(matrix)
     matrix_product = np.matmul(matrix, matrix_transpose)
 
-    rows, cols = np.nonzero(matrix_product)
+    rows, cols = (np.nonzero(np.tril(matrix_product)))
+
     data = matrix_product[rows, cols]
     mm_product = "%%MatrixMarket matrix coordinate integer general\n%d %d %d\n" % (size, size, non_zeros)
     mm_product += "\n".join(f"{row + 1} {col + 1} {value}" for row, col, value in zip(rows, cols, data))

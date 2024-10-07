@@ -110,11 +110,9 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* Cleanup */
         delete requests;
-
         if (k != rank) {
             A_recv.reset();
         }
-
         CUDA_CHECK(cudaFree(d_C_acc));
     }
 
@@ -127,7 +125,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 #endif
 
     /* Merge output tuples */
-    //TODO
+    C_products.sort_merge();
 
     /* Compute final nnz */
     IT total_nnz = C_products.get_nnz();

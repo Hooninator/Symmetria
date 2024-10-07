@@ -10,6 +10,7 @@
 #include <memory>
 #include <algorithm>
 #include <numeric>
+#include <execution>
 
 #include <mpi.h>
 

@@ -27,7 +27,8 @@ public:
         const uint32_t n = test.cols;
         const uint32_t nnz = test.nnz;
         const std::string name(test.name);
-        const std::string path(std::string("../test/test_matrices/")+test.name);
+        const std::string path(std::string("../test/test_matrices/")+test.name+".mtx");
+        const std::string product_path(std::string("../test/test_matrices/")+test.name+"_product.mtx");
 
         std::shared_ptr<ProcMap> proc_map = std::make_shared<ProcMap>(n_pes, MPI_COMM_WORLD);
 
@@ -42,7 +43,11 @@ public:
 
         TEST_PRINT("Done with SpSYRK");
 
-        /* TODO: Correctness check */
+        /* Correctness check */
+        DistSpMat1DBlockRow<IT, DT> C_correct(m, m, C_computed.get_nnz(), proc_map);
+        symmetria::io::read_mm<IT, DT>(product_path.c_str(), C_correct);
+
+        TEST_CHECK(C_correct == C_computed);
 
         return true;
     };

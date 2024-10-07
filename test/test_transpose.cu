@@ -26,7 +26,7 @@ public:
         const uint32_t n = test.cols;
         const uint32_t nnz = test.nnz;
         const std::string name(test.name);
-        const std::string path(std::string("../test/test_matrices/")+test.name);
+        const std::string path(std::string("../test/test_matrices/")+test.name+".mtx");
 
         std::shared_ptr<ProcMap> proc_map = std::make_shared<ProcMap>(n_pes, MPI_COMM_WORLD);
 
