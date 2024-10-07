@@ -5,7 +5,6 @@
 #include "../DistSpMat.hpp"
 
 #include "local_mult.cuh"
-#include "dCSR_utils.cuh"
 #include "transpose_csr.cuh"
 #include "mpi_utils.cuh"
 
@@ -36,7 +35,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     {
         MPI_Group group;
         MPI_Group_incl(world_group, (p - i), procs_in_group.data() + i, &group);
-        MPI_Comm_create(world, world_group, &comms[i]);
+        MPI_Comm_create(world, group, &comms[i]);
     }
 
     MPI_Barrier(world);
@@ -44,6 +43,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     DEBUG_PRINT("Done with bookkeeping setup");
 
     /* My local block */
+    //auto A_loc = A.get_local_matrix_ptr();
     auto A_loc = make_dCSR_from_distspmat<DT>(A);
 
     /* Create transposed version of my local block row */
@@ -60,20 +60,29 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Main loop */
     for (int k=0; k<p; k++)
     {
-
         if (k > rank) break;
+
+#ifdef DEBUG
+        logptr->OFS()<<"Beginning iteration "<<k<<std::endl;
+#endif
 
         MPI_Request * requests = new MPI_Request[3];
 
         /* Allocate space for broadcast tiles */
         if (k==rank) {
             A_recv = A_t_loc;
+#ifdef DEBUG
+            logptr->OFS()<<"Sending round "<<k<<std::endl;
+            dump_dCSR_to_log(logptr, A_recv);
+#endif
         } else {
             A_recv.alloc(A.get_loc_cols(), A.get_loc_rows(), A.get_tile_sizes()[k]);
         }
 
+
         /* Non-blocking broadcast of tranposed block row k */
-        mpi::ibcast_tile(k, comms[k], 
+        //TODO: Pack every buffer into one sendbuf and unpack it on the receiver
+        mpi::ibcast_tile(0, comms[k], //always root 0 because we're not using comm world
                           A_recv.data, A_recv.col_ids, A_recv.row_offsets,
                           requests, A_recv.nnz, A_recv.rows);
 
@@ -101,9 +110,12 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* Cleanup */
         delete requests;
-        A_recv.reset();
-        CUDA_CHECK(cudaFree(d_C_acc));
 
+        if (k != rank) {
+            A_recv.reset();
+        }
+
+        CUDA_CHECK(cudaFree(d_C_acc));
     }
 
     MPI_Barrier(world);
@@ -117,11 +129,17 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Merge output tuples */
     //TODO
 
+    /* Compute final nnz */
+    IT total_nnz = C_products.get_nnz();
+    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, world);
+
     /* Cleanup */
     MPI_Group_free(&world_group);
+    clear_dCSR_ptrs(A_loc); //necessary to prevent destructor from freeing A
+    clear_dCSR_ptrs(A_recv);
 
     /* Return final matrix */
-    DistSpMat1DBlockRow<IT, DT> C(A.get_rows(), A.get_rows(), C_products.get_nnz(),
+    DistSpMat1DBlockRow<IT, DT> C(A.get_rows(), A.get_rows(), total_nnz,
                                     proc_map);
     C.set_from_coo(&C_products);
 

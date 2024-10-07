@@ -2,12 +2,12 @@
 #define LOCAL_MULT_CUH
 
 #include "../common.h"
+#include "../dCSR_utils.cuh"
 #include "dCSR.cuh"
 #include "SemiRingInterface.h"
 #include "../source/device/Multiply.cuh"
 
 #include "transpose_csr.cuh"
-#include "dCSR_utils.cuh"
 
 
 namespace symmetria {

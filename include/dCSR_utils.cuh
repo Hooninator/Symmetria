@@ -1,7 +1,7 @@
 #ifndef DCSR_UTILS_CUH
 #define DCSR_UTILS_CUH
 
-#include "../common.h"
+#include "common.h"
 
 #include "dCSR.cuh"
 #include "SemiRingInterface.h"
@@ -25,9 +25,18 @@ dCSR<T> make_dCSR_from_distspmat(Mat& A_dist)
     A.cols = A_dist.get_loc_cols();
     A.nnz = A_dist.get_loc_nnz();
     A.data = A_dist.get_vals();
-    A.col_ids = (I*)A_dist.get_colinds();
-    A.row_offsets = (I*)A_dist.get_rowptrs();
+    A.col_ids = A_dist.get_colinds();
+    A.row_offsets = A_dist.get_rowptrs();
     return A;
+}
+
+
+template<typename T>
+void clear_dCSR_ptrs(dCSR<T>& A)
+{
+    A.data = nullptr;
+    A.col_ids = nullptr;
+    A.row_offsets = nullptr;
 }
 
 

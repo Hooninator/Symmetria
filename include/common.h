@@ -59,7 +59,12 @@
         if (rank==0) std::cout<<BRIGHT_CYAN<<msg<<RESET<<std::endl;\
         MPI_Barrier(MPI_COMM_WORLD);\
     } while (0)
-#define DEBUG_PRINT_ALL(msg) {std::cout<<BRIGHT_CYAN<<msg<<RESET<<std::endl; MPI_Barrier(MPI_COMM_WORLD);}
+#define DEBUG_PRINT_ALL(msg) do {\
+    std::cout<<BRIGHT_CYAN\
+             <<msg\
+             <<RESET<<std::endl; \
+    MPI_Barrier(MPI_COMM_WORLD); \
+} while(0)
 #else
 #define DEBUG_PRINT(msg)
 #define DEBUG_PRINT_ALL(msg)

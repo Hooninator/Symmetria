@@ -19,7 +19,7 @@ public:
     CooTriples(){}
 
     CooTriples(const std::vector<Triple>& triples):
-        triples(triples), nnz(triples.size())
+        triples(triples)
     {
     }
 
@@ -57,7 +57,6 @@ public:
                 triples.emplace_back(row, col, val);
             }
         }
-        this->nnz = triples.size();
     }
 
 
@@ -74,7 +73,6 @@ public:
                 triples.emplace_back(j, h_colinds[i], h_vals[i]);
             }
         }
-        this->nnz = nnz;
     }
 
 
@@ -156,15 +154,10 @@ public:
 
 
     std::vector<Triple> get_triples() {return triples;}
-    inline IT get_nnz() {return this->nnz;}
+    inline IT get_nnz() {return this->triples.size();}
 
 private:
-
-    IT nnz;
-
     std::vector<Triple> triples;
-
-
 };
 
 

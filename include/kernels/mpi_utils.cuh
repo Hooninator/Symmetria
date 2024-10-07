@@ -7,7 +7,6 @@ namespace symmetria {
 namespace mpi {
 
 /* Non blocking broadcast of tile of matrix that lives on root.
- * Results are stored in the vectors passed into the function.
  */
 template <typename IT, typename IT2, typename DT>
 void ibcast_tile(const int root, 

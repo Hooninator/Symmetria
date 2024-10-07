@@ -4,6 +4,8 @@
 #include "common.h"
 #include "ProcMap.hpp"
 #include "CooTriples.hpp"
+#include "dCSR.cuh"
+#include "dCSR_utils.cuh"
 
 namespace symmetria {
 
@@ -103,12 +105,13 @@ public:
                                 cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaMemcpyAsync(this->ds_rowptrs, h_rowptrs->data(), h_rowptrs->size()*sizeof(IT),
                                 cudaMemcpyHostToDevice));
-
         CUDA_CHECK(cudaDeviceSynchronize());
 
         delete h_vals;
         delete h_colinds;
         delete h_rowptrs;
+
+        MPI_Barrier(this->proc_map->get_world_comm());
     }
 
 
