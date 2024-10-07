@@ -18,14 +18,16 @@
 namespace symmetria {
 
 template <typename T, typename Mat, typename I=unsigned int>
-void make_dCSR_from_distspmat(Mat& A_dist, dCSR<T>& A)
+dCSR<T> make_dCSR_from_distspmat(Mat& A_dist)
 {
+    dCSR<T> A;
     A.rows = A_dist.get_loc_rows();
     A.cols = A_dist.get_loc_cols();
     A.nnz = A_dist.get_loc_nnz();
     A.data = A_dist.get_vals();
     A.col_ids = (I*)A_dist.get_colinds();
     A.row_offsets = (I*)A_dist.get_rowptrs();
+    return A;
 }
 
 

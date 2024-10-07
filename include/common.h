@@ -28,7 +28,7 @@
 #include "utils/colors.h"
 #include "utils/MPITypes.h"
 
-//#define DEBUG
+#define DEBUG
 
 #define CUDA_CHECK(call) {                                                 \
     cudaError_t err = call;                                                \

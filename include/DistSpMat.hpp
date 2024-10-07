@@ -24,6 +24,7 @@ public:
         m(m), n(n), nnz(nnz), proc_map(proc_map),
         tile_sizes(proc_map->get_grid_size())
     {
+        MPI_Barrier(proc_map->get_world_comm());
     }
 
 
@@ -33,9 +34,6 @@ public:
         assert(m > 0 && loc_m > 0);
 
         this->loc_nnz = triples->get_nnz();
-
-        DEBUG_PRINT_ALL("Local nnz " + STR(this->loc_nnz));
-        DEBUG_PRINT_ALL("Local rows " + STR(this->loc_m));
 
         /* Allgather to get global tile sizes array */
         IT send = this->loc_nnz;
@@ -114,31 +112,6 @@ public:
     }
 
 
-    /* Non blocking broadcast of tile of matrix that lives on root.
-     * Results are stored in the vectors passed into the function.
-     */
-    void ibcast_tile(const int root, 
-                     std::vector<DT>& vals,
-                     std::vector<IT>& colinds,
-                     std::vector<IT>& rowptrs,
-                     std::vector<MPI_Request>& requests)
-    {
-
-        MPI_Ibcast(vals.data(), vals.size(), MPIType<DT>(),
-                   root, proc_map->get_world_comm(),
-                   &requests[0]);
-
-        MPI_Ibcast(colinds.data(), vals.size(), MPIType<IT>(),
-                   root, proc_map->get_world_comm(),
-                   &requests[1]);
-
-        MPI_Ibcast(rowptrs.data(), vals.size(), MPIType<IT>(),
-                   root, proc_map->get_world_comm(),
-                   &requests[2]);
-
-    }
-
-
     ~DistSpMat()
     {
         NVSHMEM_FREE_SAFE(ds_vals);
@@ -150,6 +123,10 @@ public:
     inline void set_cols(const IT _n) {n=_n;}
     inline void set_nnz(const IT _nnz) {nnz=_nnz;}
 
+    inline IT get_rows() {return m;}
+    inline IT get_cols() {return n;}
+    inline IT get_nnz() {return nnz;}
+
     inline IT get_loc_rows() const {return loc_m;}
     inline IT get_loc_cols() const {return loc_n;}
     inline IT get_loc_nnz() const {return loc_nnz;}
@@ -157,6 +134,8 @@ public:
     inline DT * get_vals() const {return ds_vals;}
     inline IT * get_colinds() const {return ds_colinds;}
     inline IT * get_rowptrs() const {return ds_rowptrs;}
+
+    inline std::vector<IT> get_tile_sizes() const {return tile_sizes;}
 
     std::shared_ptr<ProcMap> proc_map;
 

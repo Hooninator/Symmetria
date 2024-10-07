@@ -16,6 +16,7 @@ public:
     using iterator = typename std::vector<Triple>::iterator;
     using const_iterator = typename std::vector<Triple>::const_iterator;
 
+    CooTriples(){}
 
     CooTriples(const std::vector<Triple>& triples):
         triples(triples), nnz(triples.size())
@@ -74,6 +75,17 @@ public:
             }
         }
         this->nnz = nnz;
+    }
+
+
+    void add_triples(const Triple * to_add, const IT n)
+    {
+        for (int i=0; i<n; i++)
+        {
+            triples.emplace_back(std::get<0>(to_add[i]),
+                                 std::get<1>(to_add[i]),
+                                 std::get<2>(to_add[i]));
+        }
     }
 
 
