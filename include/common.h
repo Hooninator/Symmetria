@@ -29,7 +29,8 @@
 #include "utils/colors.h"
 #include "utils/MPITypes.h"
 
-#define DEBUG
+//#define DEBUG
+#define TIMING
 
 #define CUDA_CHECK(call) {                                                 \
     cudaError_t err = call;                                                \
@@ -83,7 +84,7 @@ int my_pe_node;
 int n_pes;
 int n_pes_node;
 
-Timer * timer;
+Timer * timer_ptr;
 Log * logptr;
 
 cusparseHandle_t cusparse_handle;

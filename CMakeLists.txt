@@ -48,7 +48,7 @@ target_link_libraries(SpSYRK PUBLIC "-L${OPENSHMEM_HOME}/lib64" -lsma)
 set_target_properties(SpSYRK PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 # Link CUDA libs
-target_link_libraries(SpSYRK PUBLIC "-L/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/math_libs/lib64/" -lcublas -lcusparse -lcuda -lcudart "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda)
+target_link_libraries(SpSYRK PUBLIC "-L/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/math_libs/lib64/" -lcublas -lcusparse -lcuda -lcudart "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -ltbb)
 
 # Link MPI
 target_link_libraries(SpSYRK PUBLIC MPI::MPI_CXX)
@@ -70,7 +70,7 @@ macro(add_test name)
     set_target_properties(${name} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
     # Link CUDA libs
-    target_link_libraries(${name} PUBLIC "-L/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/math_libs/lib64/" -lcublas -lcusparse -lcuda -lcudart "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda)
+    target_link_libraries(${name} PUBLIC "-L/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/math_libs/lib64/" -lcublas -lcusparse -lcuda -lcudart "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -ltbb)
 
     # Link MPI
     target_link_libraries(${name} PUBLIC MPI::MPI_CXX)
@@ -79,6 +79,35 @@ macro(add_test name)
     target_compile_options(${name} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr -ccbin CC>)
 endmacro()
 
+macro(add_experiment name)
+    add_executable(${name} experiments/${name}.cu)
+
+    target_include_directories(${name} PUBLIC include)
+    target_include_directories(${name} PUBLIC "${NVSHMEM_HOME}/include")
+    target_include_directories(${name} PUBLIC "${OPENSHMEM_HOME}/include")
+    target_include_directories(${name} PUBLIC "$ENV{MPICH_DIR}/include")
+    target_include_directories(${name} PUBLIC "${GALATIC_HOME}/include")
+    target_include_directories(${name} PUBLIC "${BCL_HOME}")
+    target_include_directories(${name} PUBLIC "./deps/json/include")
+
+    # Link NVSHMEM 
+    target_link_libraries(${name} PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
+    target_link_libraries(${name} PUBLIC "-L${OPENSHMEM_HOME}/lib64" -lsma)
+    set_target_properties(${name} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+    # Link CUDA libs
+    target_link_libraries(${name} PUBLIC "-L/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/math_libs/lib64/" -lcublas -lcusparse -lcuda -lcudart "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -ltbb)
+
+    # Link MPI
+    target_link_libraries(${name} PUBLIC MPI::MPI_CXX)
+
+    # CUDA flags
+    target_compile_options(${name} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr -ccbin CC>)
+endmacro()
+
+# Experiments
+add_experiment(run_spsyrk)
+
 
 # Tests
 add_test(hello_world)
@@ -86,22 +115,3 @@ add_test(test_transpose)
 add_test(test_local_mult)
 add_test(test_spsyrk_bulksync_1d)
 
-#add_executable(hello_world test/hello_world.cu)
-#
-#target_include_directories(hello_world PUBLIC include)
-#target_include_directories(hello_world PUBLIC "${NVSHMEM_HOME}/include")
-#target_include_directories(hello_world PUBLIC "${OPENSHMEM_HOME}/include")
-#target_include_directories(hello_world PUBLIC "$ENV{MPICH_DIR}/include")
-#target_include_directories(hello_world PUBLIC "${GALATIC_HOME}/include")
-#target_include_directories(hello_world PUBLIC "${BCL_HOME}")
-#
-## Link NVSHMEM 
-#target_link_libraries(hello_world PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
-#target_link_libraries(hello_world PUBLIC "-L${OPENSHMEM_HOME}/lib64" -lsma)
-#set_target_properties(hello_world PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-#
-## Link CUDA libs
-#target_link_libraries(hello_world PUBLIC "-L/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/math_libs/lib64/" -lcublas -lcusparse -lcuda -lcudart )
-#
-## Link MPI
-#target_link_libraries(hello_world PUBLIC MPI::MPI_CXX)
