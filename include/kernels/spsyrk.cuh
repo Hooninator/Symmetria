@@ -79,6 +79,9 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
             A_recv.alloc(A.get_loc_cols(), A.get_loc_rows(), A.get_tile_sizes()[k]);
         }
 
+#ifdef TIMING
+        timer_ptr->start_timer("Broadcast");
+#endif
 
         /* Non-blocking broadcast of tranposed block row k */
         //TODO: Pack every buffer into one sendbuf and unpack it on the receiver
@@ -92,9 +95,17 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         /* Wait on bcast completion */
         MPI_Waitall(3, requests, MPI_STATUSES_IGNORE);
 
+#ifdef TIMING
+        timer_ptr->stop_timer("Broadcast");
+#endif
+
 #ifdef DEBUG
         logptr->OFS()<<"Received round "<<k<<std::endl;
         dump_dCSR_to_log(logptr, A_recv);
+#endif
+
+#ifdef TIMING
+        timer_ptr->start_timer("LocalMultiply");
 #endif
 
         /* If rank > k, multiply the tile I just received */
@@ -102,11 +113,23 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         auto d_C_acc = local_spgemm_galatic<SR>(A_loc, A_recv, nnzC);
         CUDA_CHECK(cudaDeviceSynchronize());
 
+#ifdef TIMING
+        timer_ptr->stop_timer("LocalMultiply");
+#endif
+
+#ifdef TIMING
+        timer_ptr->start_timer("CopyTriples");
+#endif
+
         /* Push output tuples to CooTriples on host */
         std::tuple<IT, IT, DT> * C_to_add = new std::tuple<IT, IT, DT>[nnzC];
         CUDA_CHECK(cudaMemcpy(C_to_add, d_C_acc, sizeof(std::tuple<IT, IT, DT>)*nnzC,
                                 cudaMemcpyDeviceToHost));
         C_products.add_triples(C_to_add, nnzC);
+
+#ifdef TIMING
+        timer_ptr->stop_timer("CopyTriples");
+#endif
 
         /* Cleanup */
         delete requests;
@@ -124,8 +147,16 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     C_products.dump_to_log(logptr, "Output tuples prior to merging");
 #endif
 
+#ifdef TIMING
+    timer_ptr->start_timer("Merge");
+#endif
+
     /* Merge output tuples */
     C_products.sort_merge();
+
+#ifdef TIMING
+    timer_ptr->stop_timer("Merge");
+#endif
 
     /* Compute final nnz */
     IT total_nnz = C_products.get_nnz();

@@ -25,11 +25,12 @@ void run_spsyrk_1d(ExperimentConfig& config)
         symmetria::io::read_mm<IT, DT>(path.c_str(), A);
         MPI_Barrier(MPI_COMM_WORLD);
 
-        DEBUG_PRINT("Done with IO");
-
         /* Do SpSYRK */
         using Semiring = PlusTimesSemiring<DT>;
+        
+        timer_ptr->start_timer("SpSYRK");
         auto C_computed = spsyrk_bulksync_1d_rowblock<Semiring>(A);
+        timer_ptr->stop_timer("SpSYRK");
 
         /* Write timer to JSON */
         std::string json_name("timings_spsyrk_1d_"+STR(symmetria::my_pe)+".json");
