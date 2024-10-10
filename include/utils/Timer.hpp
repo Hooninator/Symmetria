@@ -88,26 +88,34 @@ public:
     }
 
     // Write the outputs of all timers to a JSON file
-    void write_all_timers(const std::string& filename) {
-        std::ofstream file(filename);
+    void write_all_timers(const std::string& filename, 
+                          const std::ios_base::openmode& mode) {
+		std::ofstream file(filename, mode);
         if (file.is_open()) {
-            file << "{\n";
-            size_t count = 0;
+            // Write the header
+            if (mode==std::ios_base::trunc)
+                file << "Timer Name,Elapsed Time (s)\n";
             for (const auto& pair : timers) {
                 const std::string& name = pair.first;
                 double time = get_timer(name);
-                file << "  \"" << name << "\": " << time;
-                if (count != timers.size() - 1) {
-                    file << ",";
-                }
-                file << "\n";
-                ++count;
+                file << name << "," << time << "\n";
             }
-            file << "}\n";
             file.close();
         } else {
             std::cerr << "Unable to open file: " << filename << std::endl;
         }
+    }
+
+
+    void clear_all_timers()
+    {
+        timers.clear();
+    }
+
+
+    void clear_one_timer(const std::string& name)
+    {
+        timers.erase(name);
     }
 };
 }

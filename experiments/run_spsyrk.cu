@@ -25,16 +25,31 @@ void run_spsyrk_1d(ExperimentConfig& config)
         symmetria::io::read_mm<IT, DT>(path.c_str(), A);
         MPI_Barrier(MPI_COMM_WORLD);
 
-        /* Do SpSYRK */
         using Semiring = PlusTimesSemiring<DT>;
         
-        timer_ptr->start_timer("SpSYRK");
-        auto C_computed = spsyrk_bulksync_1d_rowblock<Semiring>(A);
-        timer_ptr->stop_timer("SpSYRK");
+        /* Do SpSYRK */
+        for (int i=0; i<ntrials; i++) 
+        {
+            timer_ptr->start_timer("SpSYRK");
+            auto C_computed = spsyrk_bulksync_1d_rowblock<Semiring>(A);
+            timer_ptr->stop_timer("SpSYRK");
+            double t = timer_ptr->get_timer("SpSYRK");
+            
+            if (symmetria::my_pe==0)
+                std::cout<<"Time for SpSYRK: "<<t<<"s"<<std::endl;
 
-        /* Write timer to JSON */
-        std::string json_name("timings_spsyrk_1d_"+STR(symmetria::my_pe)+".json");
-        timer_ptr->write_all_timers(json_name);
+            /* Write timer to CSV */
+            std::string csv_name("timings_spsyrk_1d_"+STR(symmetria::my_pe)+".csv");
+
+            /* If first trial, clear the file, else append */
+            if (i==0)
+                timer_ptr->write_all_timers(csv_name, std::ofstream::trunc);
+            else
+                timer_ptr->write_all_timers(csv_name, std::ofstream::app);
+
+            timer_ptr->clear_all_timers();
+            proc_map->barrier();
+        }
 
     }
     symmetria_finalize();
@@ -48,7 +63,6 @@ int main(int argc, char ** argv)
     std::string type(config.type);
 
     if (type.compare("1d")==0) {
-        std::cout<<"Running 1D experiment"<<std::endl;
         run_spsyrk_1d(config);
     }
 
