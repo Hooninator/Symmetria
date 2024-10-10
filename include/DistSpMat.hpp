@@ -30,7 +30,7 @@ public:
     }
 
 
-    void set_from_coo(CooTriples<IT, DT>* triples)
+    void set_from_coo(CooTriples<IT, DT>* triples, bool rowsorted=false)
     {
 
         assert(m > 0 && loc_m > 0);
@@ -66,7 +66,8 @@ public:
         h_rowptrs->reserve(this->loc_m + 1);
 
         // This is essential, otherwise setting rowptrs array is difficult
-        triples->rowsort();
+        if (!rowsorted)
+            triples->rowsort();
 
         IT prev_row = std::get<0>(triples->at(0));
 

@@ -40,7 +40,7 @@ void symmetria_init()
 #endif
 
     /* Timers */
-    timer = new Timer();
+    timer_ptr = new Timer();
 
 }
 
@@ -57,7 +57,7 @@ void symmetria_finalize()
     delete logptr;
 #endif
 
-    delete timer;
+    delete timer_ptr;
 
 }
 

@@ -87,29 +87,34 @@ public:
     }
 
 
-    /* Use std::sort then multithreaded linear scan */
-    void sort_merge()
+    /* Use std::sort then linear scan */
+    template <typename SR>
+    void sort_merge_sequential(const SR& semiring)
     {
         assert(triples.size() > 0);
 
-        auto col_comp = [](Triple& t1, Triple& t2)
+        auto comp = [](Triple& a, Triple& b)
         {
-            return std::get<1>(t1) < std::get<1>(t2);
+            if (std::get<0>(a) != std::get<0>(b)) {
+                return std::get<0>(a) < std::get<0>(b);
+            } else {
+                return std::get<1>(a) < std::get<1>(b);
+            }
         };
 
         std::sort(triples.begin(), triples.end(),
-                    col_comp);
+                    comp);
 
         std::vector<Triple> merged;
         merged.reserve(triples.size()); //overestimate
 
-        //TODO: Parallelize
         IT prev_row = std::get<0>(triples[0]);
         IT prev_col = std::get<1>(triples[0]);
         DT acc = std::get<2>(triples[0]);
         for (int i=1; i<triples.size(); i++)
         {
             if (prev_col == std::get<1>(triples[i])) {
+                //acc = semiring.add(std::get<2>(triples[i]), acc);
                 acc += std::get<2>(triples[i]);
             } else {
                 merged.emplace_back(prev_row, prev_col, acc);
@@ -123,6 +128,102 @@ public:
         this->triples = merged;
 
     }
+
+
+    template <typename SR>
+    void merge_gpt01(const SR& semiring)
+    {
+        assert(triples.size() > 0);
+
+		// Parallel sort the triples by the first and second elements
+		#pragma omp parallel
+		{
+			#pragma omp single nowait
+			{
+				std::sort(triples.begin(), triples.end(), [](const auto& a, const auto& b) {
+					if (std::get<0>(a) != std::get<0>(b)) {
+						return std::get<0>(a) < std::get<0>(b);
+					} else {
+						return std::get<1>(a) < std::get<1>(b);
+					}
+				});
+			}
+		}
+
+		// Determine the number of threads
+		int num_threads = omp_get_max_threads();
+		std::vector<size_t> chunk_starts(num_threads + 1);
+		size_t n = triples.size();
+		size_t chunk_size = (n + num_threads - 1) / num_threads; // Ceiling division
+
+		// Compute the start indices for each chunk
+		for (int i = 0; i <= num_threads; ++i) {
+			chunk_starts[i] = std::min(i * chunk_size, n);
+		}
+
+		// Each thread processes its chunk
+		std::vector<std::vector<std::tuple<IT, IT, DT>>> partial_results(num_threads);
+
+		#pragma omp parallel
+		{
+			int thread_id = omp_get_thread_num();
+			size_t start = chunk_starts[thread_id];
+			size_t end = chunk_starts[thread_id + 1];
+
+			if (start < end) {
+                std::vector<std::tuple<IT, IT, DT>> local_result;
+                local_result.reserve(end - start);
+
+                size_t i = start;
+                IT current_first = std::get<0>(triples[i]);
+                IT current_second = std::get<1>(triples[i]);
+                DT sum = std::get<2>(triples[i]);
+
+                for (++i; i < end; ++i) {
+                    if (std::get<0>(triples[i]) == current_first && std::get<1>(triples[i]) == current_second) {
+                        sum = semiring.add( std::get<2>(triples[i]), sum);
+                    } else {
+                        local_result.emplace_back(current_first, current_second, sum);
+                        current_first = std::get<0>(triples[i]);
+                        current_second = std::get<1>(triples[i]);
+                        sum = std::get<2>(triples[i]);
+                    }
+                }
+                // Add the last accumulated tuple
+                local_result.emplace_back(current_first, current_second, sum);
+                partial_results[thread_id] = std::move(local_result);
+            }
+		}
+
+		// Merge partial results, handling boundary cases
+		std::vector<std::tuple<IT, IT, DT>> result;
+		result.reserve(n);
+
+		for (int i = 0; i < num_threads; ++i) {
+			const auto& local_result = partial_results[i];
+			if (local_result.empty()) continue;
+
+			if (!result.empty()) {
+				// Check if the last element of the current result and the first element of the local result are the same
+				auto& last = result.back();
+				const auto& first = local_result.front();
+				if (std::get<0>(last) == std::get<0>(first) && std::get<1>(last) == std::get<1>(first)) {
+					std::get<2>(last) = semiring.add(std::get<2>(first), std::get<2>(first));
+					// Append the rest of the local result except the first element
+					result.insert(result.end(), local_result.begin() + 1, local_result.end());
+					continue;
+				}
+			}
+			// Append the entire local result
+			result.insert(result.end(), local_result.begin(), local_result.end());
+		}
+
+        this->triples = result;
+
+    }
+
+
+
 
 
     iterator begin() { return this->triples.begin();}

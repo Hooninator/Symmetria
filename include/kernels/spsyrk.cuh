@@ -152,7 +152,9 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 #endif
 
     /* Merge output tuples */
-    C_products.sort_merge();
+	SR semiring;
+    C_products.sort_merge_sequential(semiring);
+    //C_products.merge_gpt01(semiring);
 
 #ifdef TIMING
     timer_ptr->stop_timer("Merge");
@@ -167,10 +169,18 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     clear_dCSR_ptrs(A_loc); //necessary to prevent destructor from freeing A
     clear_dCSR_ptrs(A_recv);
 
+#ifdef TIMING
+    timer_ptr->start_timer("OutputConstruction");
+#endif
+
     /* Return final matrix */
     DistSpMat1DBlockRow<IT, DT> C(A.get_rows(), A.get_rows(), total_nnz,
                                     proc_map);
-    C.set_from_coo(&C_products);
+    C.set_from_coo(&C_products, true);
+
+#ifdef TIMING
+    timer_ptr->stop_timer("OutputConstruction");
+#endif
 
     return C;
 }

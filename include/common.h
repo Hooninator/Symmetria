@@ -13,6 +13,7 @@
 #include <execution>
 
 #include <mpi.h>
+#include <omp.h>
 
 #include <nvshmem.h>
 #include <nvshmemx.h>

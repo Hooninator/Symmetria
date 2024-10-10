@@ -97,6 +97,12 @@ public:
     }
 
 
+    void barrier()
+    {
+        MPI_Barrier(world_comm);
+    }
+
+
     inline MPI_Comm get_world_comm() const {return world_comm;}
     inline MPI_Comm get_row_comm() const {return row_comm;}
     inline MPI_Comm get_col_comm() const {return col_comm;}
