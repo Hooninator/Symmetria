@@ -8,6 +8,8 @@
 #include "transpose_csr.cuh"
 #include "mpi_utils.cuh"
 
+#include "CombBLAS/CombBLAS.h"
+
 
 namespace symmetria {
 template <typename SR, typename IT, typename DT>
