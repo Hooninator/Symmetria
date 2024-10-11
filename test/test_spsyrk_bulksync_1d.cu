@@ -56,11 +56,15 @@ public:
 
 
 
-int main()
+int main(int argc, char ** argv)
 {
+    int test_id = -1;
+    if (argc > 1)
+        test_id = std::atoi(argv[1]);
+
     symmetria_init();
     {
-        TestDriver<TestSpSYRKSync1D> manager("../test/test_configs.json", "SpSYRK Sync 1D");
+        TestDriver<TestSpSYRKSync1D> manager("../test/test_configs.json", "SpSYRK Sync 1D", test_id);
         manager.run_tests();
     }
     symmetria_finalize();

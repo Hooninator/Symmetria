@@ -12,6 +12,21 @@
 
 namespace symmetria {
 
+template <typename IT, typename DT>
+struct DeviceTuples
+{
+    IT row, col;
+    DT val;
+};
+
+
+template <typename IT, typename DT>
+std::ofstream& operator<<(std::ofstream& os, DeviceTuples<IT, DT>& t)
+{
+    os<<"("<<t.row<<","<<t.col<<","<<t.val<<")";
+    return os;
+}
+
 
 //TODO Why is the output not sorted by row here -- seems to only happen for small matrices
 template <typename IT, typename IT2, typename DT>
@@ -44,7 +59,6 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
 
     using Triple = std::tuple<IT, IT, DT>;
 
-
     //Note: I don't know what any of this is
     const int Threads = 128;
     const int BlocksPerMP = 1;
@@ -72,6 +86,7 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
     /* Convert to device triples */
     Triple * d_triples;
     CUDA_CHECK(cudaMalloc(&d_triples, sizeof(Triple)*nnz));
+
     const uint32_t tpb = 256;
     const uint32_t wpb = std::min(C.rows, static_cast<size_t>(tpb / 32));
     const uint32_t blocks = std::ceil( static_cast<double>(C.rows) / static_cast<double>(wpb) );

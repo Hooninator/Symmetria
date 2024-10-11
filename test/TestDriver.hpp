@@ -36,13 +36,15 @@ class TestDriver
 
 public:
 
-    TestDriver(const std::string json_path, const std::string test_name):
+    TestDriver(const std::string json_path, const std::string test_name, const int test_id=-1):
         tests(0), test_name(test_name)
     {
         std::ifstream infile(json_path);
 
         json json_data;
         infile >> json_data;
+
+        int id = 0;
 
         try {
             for (auto const& record : json_data)
@@ -52,7 +54,14 @@ public:
                 params.cols = record.at("cols").get<uint64_t>();
                 params.nnz = record.at("nnz").get<uint64_t>();
                 params.name= record.at("name").get<std::string>();
-                tests.push_back(params);
+                
+                if (test_id==-1||id==test_id) {
+                    tests.push_back(params);
+                    id++;
+                } else {
+                    id++;
+                }
+
             }
         } catch(json::exception& e) {
             std::cerr<<"Error parsing JSON: "<<e.what() <<std::endl;

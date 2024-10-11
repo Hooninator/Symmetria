@@ -25,6 +25,9 @@ private:
     }
 
 public:
+
+    Timer() {timers.reserve(20);}
+
     // Start a timer with the given name
     void start_timer(const std::string& name) {
         TimerData& timer = timers[name];

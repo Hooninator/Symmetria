@@ -181,7 +181,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Return final matrix */
     DistSpMat1DBlockRow<IT, DT> C(A.get_rows(), A.get_rows(), total_nnz,
                                     proc_map);
-    C.set_from_coo(&C_final, false);
+    C.set_from_coo(&C_final); //do sort
 
 #ifdef TIMING
     timer_ptr->stop_timer("OutputConstruction");

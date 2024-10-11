@@ -39,7 +39,7 @@ CooTriples<IT, DT> merge_hash_combblas(std::vector<std::tuple<IT, IT, DT> *> to_
 
     for (int i=0; i<to_merge.size(); i++)
     {
-#ifdef DEBUG
+#ifdef DEBUG_
         for (int j=0; j<nnz_arr[i]; j++)
         {
             logptr->OFS()<<to_str(to_merge[i][j])<<std::endl;

@@ -35,7 +35,7 @@ public:
     {
         ofs<<prefix<<std::endl;
         std::for_each(vec.begin(), vec.end(), 
-                        [this](auto&  elem) {this->ofs<<elem<<",";});
+                        [this](auto&  elem) {this->ofs<<elem<<'\n';});
         ofs<<std::endl;
     }
 

@@ -30,7 +30,7 @@ public:
     }
 
 
-    void set_from_coo(CooTriples<IT, DT>* triples, bool rowsorted=false)
+    void set_from_coo(CooTriples<IT, DT>* triples)
     {
 
         assert(m > 0 && loc_m > 0);
@@ -56,52 +56,25 @@ public:
         if (this->loc_nnz==0)
             return;
 
-        std::vector<DT> * h_vals = new std::vector<DT>();
-        h_vals->reserve(this->loc_nnz);
-
-        std::vector<IT> * h_colinds = new std::vector<IT>();
-        h_colinds->reserve(this->loc_nnz);
-
-        std::vector<IT> * h_rowptrs = new std::vector<IT>();
-        h_rowptrs->reserve(this->loc_m + 1);
-
-        // This is essential, otherwise setting rowptrs array is difficult
-        
-        START_TIMER("RowSort");
-        if (!rowsorted)
-            triples->rowsort();
-        STOP_TIMER("RowSort");
-
         START_TIMER("CSRConstruction");
 
-        IT prev_row = std::get<0>(triples->at(0));
+        std::vector<DT> * h_vals = new std::vector<DT>();
+        h_vals->resize(this->loc_nnz);
 
-        for (IT j=0; j<=prev_row; j++) {
-            h_rowptrs->emplace_back(0);
-        }
+        std::vector<IT> * h_colinds = new std::vector<IT>();
+        h_colinds->resize(this->loc_nnz);
 
-        for (IT i=0; i<triples->size(); i++) {
-            IT row = std::get<0>(triples->at(i));
+        std::vector<IT> * h_rowptrs = new std::vector<IT>();
+        h_rowptrs->resize(this->loc_m + 1);
 
-            if (row != prev_row) {
+        DEBUG_PRINT("Starting CSR building");
 
-                for (IT j=0; j<(row-prev_row); j++) {
-                    h_rowptrs->emplace_back(i);
-                }
+        build_csr_fast(triples, h_vals, h_colinds, h_rowptrs, this->loc_m);
 
-                prev_row = row;
-            }
-
-            h_vals->emplace_back(std::get<2>(triples->at(i)));
-            h_colinds->emplace_back(std::get<1>(triples->at(i)));
-
-
-        }
-
-        while (h_rowptrs->size() < (this->loc_m + 1))
-            h_rowptrs->emplace_back(triples->size());
 
         STOP_TIMER("CSRConstruction");
+
+        DEBUG_PRINT("Done building CSR arrays");
 
 #ifdef DEBUG
         logptr->log_vec(*h_rowptrs, "rowptrs", "End rowptrs");
@@ -124,6 +97,121 @@ public:
         delete h_rowptrs;
 
         MPI_Barrier(this->proc_map->get_world_comm());
+    }
+
+    
+    void build_csr_fast(CooTriples<IT, DT> * triples,
+                        std::vector<DT> * h_vals,
+                        std::vector<IT> * h_colinds,
+                        std::vector<IT> * h_rowptrs,
+                        const IT rows)
+    {
+        std::vector<IT> row_nnz(rows);
+        std::for_each(triples->begin(), triples->end(),
+            [&](auto const& t)mutable
+            {
+                row_nnz[std::get<0>(t)]++;
+            }
+        );
+
+        std::inclusive_scan(row_nnz.begin(), row_nnz.end(), 
+                            h_rowptrs->begin()+1);
+
+        std::fill(row_nnz.begin(), row_nnz.end(), IT(0));
+
+        for (int i=0; i<triples->get_nnz(); i++)
+        {
+            auto const t = triples->at(i);
+            const IT rid = std::get<0>(t);
+            const IT idx = h_rowptrs->at(rid) + row_nnz[rid];
+            h_colinds->at(idx) = std::get<1>(t);
+            h_vals->at(idx) = std::get<2>(t);
+            row_nnz[rid]++;
+        }
+
+    }
+
+
+    void build_csr(CooTriples<IT, DT> * triples,
+                    std::vector<DT> * h_vals,
+                    std::vector<IT> * h_colinds,
+                    std::vector<IT> * h_rowptrs)
+    {
+        IT prev_row = std::get<0>(triples->at(0));
+
+        for (IT j=0; j<=prev_row; j++) {
+            h_rowptrs->emplace_back(0);
+        }
+
+        for (IT i=0; i<triples->size(); i++) {
+            IT row = std::get<0>(triples->at(i));
+
+            if (row != prev_row) {
+
+                assert( (row - prev_row) >= 0 );
+
+                for (IT j=0; j<(row-prev_row); j++) {
+                    h_rowptrs->emplace_back(i);
+                }
+
+                prev_row = row;
+            }
+
+            h_vals->emplace_back(std::get<2>(triples->at(i)));
+            h_colinds->emplace_back(std::get<1>(triples->at(i)));
+
+        }
+
+        while (h_rowptrs->size() < (this->loc_m + 1))
+            h_rowptrs->emplace_back(triples->size());
+
+    }
+
+
+    void build_csr_transpose(CooTriples<IT, DT> * triples,
+                            std::vector<DT> * h_vals,
+                            std::vector<IT> * h_colinds,
+                            std::vector<IT> * h_rowptrs)
+    {
+        IT prev_row = std::get<1>(triples->at(0));
+
+        for (IT j=0; j<=prev_row; j++) {
+            h_rowptrs->emplace_back(0);
+        }
+
+        DEBUG_PRINT_ALL("Done with first loop, prev_row: " + STR(prev_row));
+        DEBUG_PRINT_ALL("Triples size: " + STR(triples->size()));
+
+        for (IT i=0; i<triples->size(); i++) {
+            IT row = std::get<1>(triples->at(i));
+
+            if (row != prev_row) {
+
+                assert( (row - prev_row) >= 0);
+
+#ifdef DEBUG
+                logptr->OFS()<<"row: "<<row<<", prev_row: "<<prev_row<<std::endl;
+#endif
+
+                for (IT j=0; j<(row-prev_row); j++) {
+                    h_rowptrs->emplace_back(i);
+                }
+
+                prev_row = row;
+            }
+
+            h_vals->emplace_back(std::get<2>(triples->at(i)));
+            h_colinds->emplace_back(std::get<0>(triples->at(i)));
+
+        }
+
+        DEBUG_PRINT("Starting while loop");
+
+        while (h_rowptrs->size() < (this->loc_m + 1))
+            h_rowptrs->emplace_back(triples->size());
+
+        DEBUG_PRINT("Ending while loop");
+
     }
 
 
