@@ -25,7 +25,6 @@ ExperimentConfig parse_args(int argc, char ** argv)
     {
         std::string key = std::string(argv[i]);
         const char * val = (argv[i+1]);
-        std::cout<<key<<","<<val<<std::endl;
         args[key] = val;
     }
 

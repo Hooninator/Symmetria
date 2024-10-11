@@ -6,6 +6,7 @@
 
 #include "local_mult.cuh"
 #include "transpose_csr.cuh"
+#include "merge.cuh"
 #include "mpi_utils.cuh"
 
 
@@ -21,7 +22,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     const int p = proc_map->get_n_procs();
     int rank = proc_map->get_rank();
     MPI_Comm world = proc_map->get_world_comm();
-
+    
     /* Need array of communicators for each subset of the processes that are broadcast to at each stage */
     std::vector<MPI_Comm> comms(p);
 
@@ -43,7 +44,6 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     DEBUG_PRINT("Done with bookkeeping setup");
 
     /* My local block */
-    //auto A_loc = A.get_local_matrix_ptr();
     auto A_loc = make_dCSR_from_distspmat<DT>(A);
 
     /* Create transposed version of my local block row */
@@ -53,7 +53,8 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     dCSR<DT> A_recv;
 
     /* COO triples on host used to store C */
-    CooTriples<IT, DT> C_products; 
+    std::vector<std::tuple<IT, IT, DT>*> C_products;
+    IT * C_nnz_arr = new IT[rank+1];
         
     DEBUG_PRINT("Beginning main loop");
 
@@ -71,7 +72,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         /* Allocate space for broadcast tiles */
         if (k==rank) {
             A_recv = A_t_loc;
-#ifdef DEBUG
+#ifdef DEBUG_LOG
             logptr->OFS()<<"Sending round "<<k<<std::endl;
             dump_dCSR_to_log(logptr, A_recv);
 #endif
@@ -99,7 +100,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         timer_ptr->stop_timer("Broadcast");
 #endif
 
-#ifdef DEBUG
+#ifdef DEBUG_
         logptr->OFS()<<"Received round "<<k<<std::endl;
         dump_dCSR_to_log(logptr, A_recv);
 #endif
@@ -110,8 +111,10 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* If rank > k, multiply the tile I just received */
         IT nnzC;
-        auto d_C_acc = local_spgemm_galatic<SR>(A_loc, A_recv, nnzC);
+        IT offset = k * (A.get_rows() / p);
+        auto d_C_acc = local_spgemm_galatic<SR>(A_loc, A_recv, nnzC, offset);
         CUDA_CHECK(cudaDeviceSynchronize());
+        C_nnz_arr[k] = nnzC;
 
 #ifdef TIMING
         timer_ptr->stop_timer("LocalMultiply");
@@ -123,9 +126,8 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* Push output tuples to CooTriples on host */
         std::tuple<IT, IT, DT> * C_to_add = new std::tuple<IT, IT, DT>[nnzC];
-        CUDA_CHECK(cudaMemcpy(C_to_add, d_C_acc, sizeof(std::tuple<IT, IT, DT>)*nnzC,
-                                cudaMemcpyDeviceToHost));
-        C_products.add_triples(C_to_add, nnzC);
+        CUDA_CHECK(cudaMemcpy(C_to_add, d_C_acc, sizeof(std::tuple<IT, IT, DT>)*nnzC, cudaMemcpyDeviceToHost));
+        C_products.push_back(C_to_add);
 
 #ifdef TIMING
         timer_ptr->stop_timer("CopyTriples");
@@ -143,31 +145,34 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
     DEBUG_PRINT("Out of main loop");
 
-#ifdef DEBUG
-    C_products.dump_to_log(logptr, "Output tuples prior to merging");
-#endif
-
 #ifdef TIMING
     timer_ptr->start_timer("Merge");
 #endif
 
     /* Merge output tuples */
 	SR semiring;
-    C_products.sort_merge_sequential(semiring);
-    //C_products.merge_gpt01(semiring);
+    auto C_final = merge_hash_combblas<SR>(C_products, C_nnz_arr, 
+                                           A.get_loc_rows(), A.get_rows());
+
+    DEBUG_PRINT("Done with merge");
 
 #ifdef TIMING
     timer_ptr->stop_timer("Merge");
 #endif
 
+#ifdef DEBUG
+    C_final.dump_to_log(logptr, "Final output");
+#endif
+
     /* Compute final nnz */
-    IT total_nnz = C_products.get_nnz();
+    IT total_nnz = C_final.get_nnz();
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, world);
 
     /* Cleanup */
     MPI_Group_free(&world_group);
     clear_dCSR_ptrs(A_loc); //necessary to prevent destructor from freeing A
     clear_dCSR_ptrs(A_recv);
+    delete[] C_nnz_arr;
 
 #ifdef TIMING
     timer_ptr->start_timer("OutputConstruction");
@@ -176,7 +181,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Return final matrix */
     DistSpMat1DBlockRow<IT, DT> C(A.get_rows(), A.get_rows(), total_nnz,
                                     proc_map);
-    C.set_from_coo(&C_products, true);
+    C.set_from_coo(&C_final, false);
 
 #ifdef TIMING
     timer_ptr->stop_timer("OutputConstruction");

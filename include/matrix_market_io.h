@@ -206,7 +206,7 @@ void read_mm(const char * path, Mat& A)
     /* Distribute tuples according to matrix distribution */
     auto local_tuples = distribute_tuples<IT, DT>(read_tuples, A);
 
-#ifdef DEBUG
+#ifdef DEBUG_LOG
     /*
     logptr->OFS()<<"Local matrix before remapping"<<std::endl;
     local_tuples->dump_to_log(logptr);
@@ -217,7 +217,7 @@ void read_mm(const char * path, Mat& A)
     std::transform(local_tuples->begin(), local_tuples->end(), local_tuples->begin(),
         [&](auto& tuple) {return A.map_glob_to_local(tuple);});
 
-#ifdef DEBUG
+#ifdef DEBUG_
     logptr->OFS()<<"Local matrix"<<std::endl;
     local_tuples->dump_to_log(logptr);
 #endif

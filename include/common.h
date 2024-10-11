@@ -31,7 +31,9 @@
 #include "utils/MPITypes.h"
 
 //#define DEBUG
+//#define DEBUG_LOG
 #define TIMING
+//#define THREADED //For combblas
 
 #define CUDA_CHECK(call) {                                                 \
     cudaError_t err = call;                                                \
@@ -57,6 +59,7 @@
 
 #ifdef DEBUG
 #define DEBUG_PRINT(msg) do {\
+        MPI_Barrier(MPI_COMM_WORLD);\
         int rank;\
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);\
         if (rank==0) std::cout<<BRIGHT_CYAN<<msg<<RESET<<std::endl;\
@@ -72,6 +75,16 @@
 #define DEBUG_PRINT(msg)
 #define DEBUG_PRINT_ALL(msg)
 #endif
+
+
+#ifdef TIMING
+#define START_TIMER(name) timer_ptr->start_timer(name)
+#define STOP_TIMER(name) timer_ptr->stop_timer(name)
+#else
+#define START_TIMER(name)
+#define STOP_TIMER(name) 
+#endif
+
 
 #define STR(x) std::to_string(x)
 

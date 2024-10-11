@@ -7,6 +7,7 @@
 
 using namespace nlohmann;
 
+//TODO: Move this out of main namespace
 namespace symmetria {
 namespace testing {
 
@@ -81,6 +82,7 @@ public:
                 TEST_SUCCESS("[" + STR(i+1) + "/" + STR(tests.size()) + "]");
             } else {
                 TEST_FAIL();
+                exit(1);
             }
 
             ss<<BRIGHT_YELLOW<<"================"<<RESET<<std::endl;
@@ -98,7 +100,7 @@ public:
 
     bool run_test(TestParams& test)
     {
-        static_cast<DER*>(this)->run_test_impl(test);
+        return static_cast<DER*>(this)->run_test_impl(test);
     }
 
 

@@ -66,15 +66,19 @@ public:
         h_rowptrs->reserve(this->loc_m + 1);
 
         // This is essential, otherwise setting rowptrs array is difficult
+        
+        START_TIMER("RowSort");
         if (!rowsorted)
             triples->rowsort();
+        STOP_TIMER("RowSort");
+
+        START_TIMER("CSRConstruction");
 
         IT prev_row = std::get<0>(triples->at(0));
 
         for (IT j=0; j<=prev_row; j++) {
             h_rowptrs->emplace_back(0);
         }
-
 
         for (IT i=0; i<triples->size(); i++) {
             IT row = std::get<0>(triples->at(i));
@@ -93,12 +97,17 @@ public:
 
 
         }
-        h_rowptrs->emplace_back(triples->size());
 
+        while (h_rowptrs->size() < (this->loc_m + 1))
+            h_rowptrs->emplace_back(triples->size());
 
-#ifdef DEBUG_DIST_SPMAT
-        //logptr->print_vec(*h_rowptrs, "rowptrs", "End rowptrs");
+        STOP_TIMER("CSRConstruction");
+
+#ifdef DEBUG
+        logptr->log_vec(*h_rowptrs, "rowptrs", "End rowptrs");
 #endif
+
+        START_TIMER("CSRCopy");
             
         CUDA_CHECK(cudaMemcpyAsync(this->ds_vals, h_vals->data(), h_vals->size()*sizeof(DT),
                                 cudaMemcpyHostToDevice));
@@ -107,6 +116,8 @@ public:
         CUDA_CHECK(cudaMemcpyAsync(this->ds_rowptrs, h_rowptrs->data(), h_rowptrs->size()*sizeof(IT),
                                 cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaDeviceSynchronize());
+
+        STOP_TIMER("CSRCopy");
 
         delete h_vals;
         delete h_colinds;
