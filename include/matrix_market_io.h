@@ -87,7 +87,7 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
 
     for (auto& tuple : tuples->get_triples()) {
         /* Map tuple to correct process */
-        int target = A.map_triple(tuple);
+        int target = A.owner(tuple);
 
         send_tuples[target].push_back(tuple);
         send_sizes[target]++;

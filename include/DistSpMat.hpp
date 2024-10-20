@@ -30,74 +30,7 @@ public:
     }
 
 
-    void set_from_coo(CooTriples<IT, DT>* triples)
-    {
-
-        assert(m > 0 && loc_m > 0);
-
-        this->loc_nnz = triples->get_nnz();
-
-        /* Allgather to get global tile sizes array */
-        IT send = this->loc_nnz;
-        MPI_Allgather(&(send), 1, MPIType<IT>(), 
-                        this->tile_sizes.data(), 1, MPIType<IT>(), 
-                        this->proc_map->get_world_comm());
-
-#ifdef DEBUG
-        logptr->log_vec(this->tile_sizes, "Tile sizes");
-#endif
-        
-        this->ds_vals = ((DT *)nvshmem_malloc(this->loc_nnz * sizeof(DT)));
-
-        this->ds_colinds = ((IT *)nvshmem_malloc(this->loc_nnz * sizeof(IT)));
-    
-        this->ds_rowptrs = ((IT *)nvshmem_malloc((this->loc_m+1) * sizeof(IT)));
-
-        if (this->loc_nnz==0)
-            return;
-
-        START_TIMER("CSRConstruction");
-
-        std::vector<DT> * h_vals = new std::vector<DT>();
-        h_vals->resize(this->loc_nnz);
-
-        std::vector<IT> * h_colinds = new std::vector<IT>();
-        h_colinds->resize(this->loc_nnz);
-
-        std::vector<IT> * h_rowptrs = new std::vector<IT>();
-        h_rowptrs->resize(this->loc_m + 1);
-
-        DEBUG_PRINT("Starting CSR building");
-
-        build_csr_fast(triples, h_vals, h_colinds, h_rowptrs, this->loc_m);
-
-
-        STOP_TIMER("CSRConstruction");
-
-        DEBUG_PRINT("Done building CSR arrays");
-
-#ifdef DEBUG
-        logptr->log_vec(*h_rowptrs, "rowptrs", "End rowptrs");
-#endif
-
-        START_TIMER("CSRCopy");
-            
-        CUDA_CHECK(cudaMemcpyAsync(this->ds_vals, h_vals->data(), h_vals->size()*sizeof(DT),
-                                cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpyAsync(this->ds_colinds, h_colinds->data(), h_colinds->size()*sizeof(IT),
-                                cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpyAsync(this->ds_rowptrs, h_rowptrs->data(), h_rowptrs->size()*sizeof(IT),
-                                cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaDeviceSynchronize());
-
-        STOP_TIMER("CSRCopy");
-
-        delete h_vals;
-        delete h_colinds;
-        delete h_rowptrs;
-
-        MPI_Barrier(this->proc_map->get_world_comm());
-    }
+    virtual void set_from_coo(CooTriples<IT, DT>* triples) {};
 
     
     void build_csr_fast(CooTriples<IT, DT> * triples,
@@ -259,6 +192,23 @@ protected:
 
 
 template <typename IT, typename DT>
+bool operator==(DistSpMat<IT, DT>& lhs, DistSpMat<IT, DT>& rhs) 
+{
+    auto A_lhs = make_dCSR_from_distspmat<DT>(lhs);
+    auto A_rhs = make_dCSR_from_distspmat<DT>(rhs);
+
+    bool equals = A_lhs == A_rhs;
+
+    MPI_Allreduce(MPI_IN_PLACE, &equals, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+
+    clear_dCSR_ptrs(A_lhs);
+    clear_dCSR_ptrs(A_rhs);
+
+    return equals;
+}
+
+
+template <typename IT, typename DT>
 class DistSpMat1DBlockRow : public DistSpMat<IT, DT>
 {
 
@@ -279,6 +229,76 @@ public:
     }
 
 
+    void set_from_coo(CooTriples<IT, DT>* triples) override
+    {
+
+        assert(this->m > 0 && this->loc_m > 0);
+
+        this->loc_nnz = triples->get_nnz();
+
+        /* Allgather to get global tile sizes array */
+        IT send = this->loc_nnz;
+        MPI_Allgather(&(send), 1, MPIType<IT>(), 
+                        this->tile_sizes.data(), 1, MPIType<IT>(), 
+                        this->proc_map->get_world_comm());
+
+#ifdef DEBUG
+        logptr->log_vec(this->tile_sizes, "Tile sizes");
+#endif
+        
+        this->ds_vals = ((DT *)nvshmem_malloc(this->loc_nnz * sizeof(DT)));
+
+        this->ds_colinds = ((IT *)nvshmem_malloc(this->loc_nnz * sizeof(IT)));
+    
+        this->ds_rowptrs = ((IT *)nvshmem_malloc((this->loc_m+1) * sizeof(IT)));
+
+        if (this->loc_nnz==0)
+            return;
+
+        START_TIMER("CSRConstruction");
+
+        std::vector<DT> * h_vals = new std::vector<DT>();
+        h_vals->resize(this->loc_nnz);
+
+        std::vector<IT> * h_colinds = new std::vector<IT>();
+        h_colinds->resize(this->loc_nnz);
+
+        std::vector<IT> * h_rowptrs = new std::vector<IT>();
+        h_rowptrs->resize(this->loc_m + 1);
+
+        DEBUG_PRINT("Starting CSR building");
+
+        this->build_csr_fast(triples, h_vals, h_colinds, h_rowptrs, this->loc_m);
+
+
+        STOP_TIMER("CSRConstruction");
+
+        DEBUG_PRINT("Done building CSR arrays");
+
+#ifdef DEBUG
+        logptr->log_vec(*h_rowptrs, "rowptrs", "End rowptrs");
+#endif
+
+        START_TIMER("CSRCopy");
+            
+        CUDA_CHECK(cudaMemcpyAsync(this->ds_vals, h_vals->data(), h_vals->size()*sizeof(DT),
+                                cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpyAsync(this->ds_colinds, h_colinds->data(), h_colinds->size()*sizeof(IT),
+                                cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpyAsync(this->ds_rowptrs, h_rowptrs->data(), h_rowptrs->size()*sizeof(IT),
+                                cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        STOP_TIMER("CSRCopy");
+
+        delete h_vals;
+        delete h_colinds;
+        delete h_rowptrs;
+
+        MPI_Barrier(this->proc_map->get_world_comm());
+    }
+
+
     void set_loc_dims()
     {
         this->loc_m = std::ceil(static_cast<double>(this->m) / this->proc_map->get_px());
@@ -286,7 +306,7 @@ public:
     }
 
 
-    Triple map_glob_to_local(Triple& t)
+    Triple map_glob_to_local(const Triple& t)
     {
         IT row = std::get<0>(t);
         IT col = std::get<1>(t);
@@ -296,7 +316,7 @@ public:
     }
 
 
-    int map_triple(Triple& t)
+    int owner(const Triple& t)
     {
         return std::get<0>(t) / this->loc_m;
     }
@@ -305,20 +325,69 @@ public:
 };
 
 
+/* 2D block cyclic sparse matrix */
 template <typename IT, typename DT>
-bool operator==(DistSpMat<IT, DT>& lhs, DistSpMat<IT, DT>& rhs) 
+class DistSpMat2DCyclic: public DistSpMat<IT, DT>
 {
-    auto A_lhs = make_dCSR_from_distspmat<DT>(lhs);
-    auto A_rhs = make_dCSR_from_distspmat<DT>(rhs);
 
-    bool equals = A_lhs == A_rhs;
+    using Triple = std::tuple<IT, IT, DT>;
 
-    MPI_Allreduce(MPI_IN_PLACE, &equals, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+public:
+    DistSpMat2DCyclic(const IT m, const IT n, const IT nnz,
+                        const IT mb, const IT nb,
+                        std::shared_ptr<ProcMap> proc_map):
+        DistSpMat<IT, DT>(m, n, nnz, proc_map),
+        mb(mb), nb(nb)
+    {
+        set_loc_dims();
+    }
 
-    clear_dCSR_ptrs(A_lhs);
-    clear_dCSR_ptrs(A_rhs);
 
-    return equals;
-}
+    void set_from_coo(CooTriples<IT, DT> * triples) override
+    {
+
+    }
+
+
+    void set_loc_dims()
+    {
+        IT _loc_m = this->m / mb;
+        IT extra_rows = 0;
+        
+        extra_rows = std::ceil(static_cast<double>(this->m) / static_cast<double>(mb)) - _loc_m;
+        this->loc_m = _loc_m + extra_rows;
+
+        IT _loc_n = this->n / nb;
+        IT extra_cols = std::ceil(static_cast<double>(this->n) / static_cast<double>(nb)) - _loc_n;
+        this->loc_n = _loc_n + extra_cols;
+    }
+
+
+    Triple map_glob_to_local(const Triple& t)
+    {
+        IT row = std::get<0>(t);
+        IT col = std::get<1>(t);
+        DT val = std::get<2>(t);
+
+        return {row % this->loc_m, col % this->loc_n, val};
+    }
+
+
+    IT owner(const Triple& t)
+    {
+        IT row = std::get<0>(t);
+        IT col = std::get<1>(t);
+        DT val = std::get<2>(t);
+
+    }
+
+
+private:
+    IT mb, nb;
+
+
+};
+
+
 }
 #endif
