@@ -28,7 +28,6 @@ std::ofstream& operator<<(std::ofstream& os, DeviceTuples<IT, DT>& t)
 }
 
 
-//TODO Why is the output not sorted by row here -- seems to only happen for small matrices
 template <typename IT, typename IT2, typename DT>
 __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs, 
                                 std::tuple<IT, IT, DT> * d_triples,

@@ -35,10 +35,12 @@ public:
         DistSpMat1DBlockRow<IT, DT> A(m, n, nnz, proc_map);
         symmetria::io::read_mm<IT, DT>(path.c_str(), A);
         MPI_Barrier(MPI_COMM_WORLD);
+        DEBUG_PRINT("Done reading");
 
         /* Fetch local submatrices */
         dCSR<DT> A_dcsr = make_dCSR_from_distspmat_outofplace<DT>(A);
         dCSR<DT> A_t = transpose_outofplace(A_dcsr);
+
 
 #ifdef DEBUG_TEST
         dump_dCSR_to_log(logptr, A_dcsr);

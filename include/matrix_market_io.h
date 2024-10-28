@@ -167,6 +167,8 @@ void read_mm(const char * path, Mat& A)
         mm_file.close();
     }
 
+    DEBUG_PRINT("Read metadata");
+
     MPI_Bcast(send_buf, 4, MPIType<IT>(), 0, MPI_COMM_WORLD);
 
     A.set_rows(send_buf[0]);
@@ -196,6 +198,8 @@ void read_mm(const char * path, Mat& A)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
+    DEBUG_PRINT("Read lines");
+
     /* Parse my lines */
     auto read_tuples = parse_mm_lines<IT, DT>(num_bytes, my_offset, buf, file_handle);
 
@@ -223,6 +227,7 @@ void read_mm(const char * path, Mat& A)
 #endif
 
     /* Set local csr arrays */
+    DEBUG_PRINT("Setting from coo");
     A.set_from_coo(local_tuples);
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -230,6 +235,17 @@ void read_mm(const char * path, Mat& A)
 
     DEBUG_PRINT("Done reading matrix");
 
+}
+
+
+template <typename IT, typename DT, typename Mat>
+void read_mm_cyclic(const char * path, Mat& A)
+{
+    // This should be basically the same as the other mm reader,
+    // but we also need to put local tuples into a vector of CooTuples
+    // and apply index mapping to each one, then 
+    // call the special set_from_coo overload that is meant to work
+    // with a vector of CooTuples
 }
 
 

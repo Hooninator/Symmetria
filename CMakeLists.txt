@@ -27,7 +27,7 @@ find_package(MPI REQUIRED)
 # Find CUDA and NVSHMEM 
 find_package(CUDA)
 
-set(NVSHMEM_HOME "/global/common/software/nersc9/nvshmem/2.11.0")
+#set(NVSHMEM_HOME "/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/comm_libs/nvshmem")
 set(OPENSHMEM_HOME "/opt/cray/pe/sma/11.7.0/ofi/sma")
 
 set(BCL_HOME "~/bcl")
@@ -36,7 +36,7 @@ set(COMBBLAS_HOME "./deps/CombBLAS/install/")
 
 # Include directories
 target_include_directories(SpSYRK PUBLIC include)
-target_include_directories(SpSYRK PUBLIC "${NVSHMEM_HOME}/include")
+#target_include_directories(SpSYRK PUBLIC "${NVSHMEM_HOME}/include")
 target_include_directories(SpSYRK PUBLIC "${OPENSHMEM_HOME}/include")
 target_include_directories(SpSYRK PUBLIC "$ENV{MPICH_DIR}/include")
 target_include_directories(SpSYRK PUBLIC "${GALATIC_HOME}/include")
@@ -45,7 +45,7 @@ target_include_directories(SpSYRK PUBLIC "./deps/json/include")
 target_include_directories(SpSYRK PUBLIC "${COMBBLAS_HOME}/include")
 
 # Link NVSHMEM 
-target_link_libraries(SpSYRK PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
+#target_link_libraries(SpSYRK PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
 target_link_libraries(SpSYRK PUBLIC "-L${OPENSHMEM_HOME}/lib64" -lsma)
 set_target_properties(SpSYRK PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
@@ -59,7 +59,7 @@ macro(add_test name)
     add_executable(${name} test/${name}.cu)
 
     target_include_directories(${name} PUBLIC include)
-    target_include_directories(${name} PUBLIC "${NVSHMEM_HOME}/include")
+    #target_include_directories(${name} PUBLIC "${NVSHMEM_HOME}/include")
     target_include_directories(${name} PUBLIC "${OPENSHMEM_HOME}/include")
     target_include_directories(${name} PUBLIC "$ENV{MPICH_DIR}/include")
     target_include_directories(${name} PUBLIC "${GALATIC_HOME}/include")
@@ -68,7 +68,7 @@ macro(add_test name)
     target_include_directories(${name} PUBLIC "${COMBBLAS_HOME}/include")
 
     # Link NVSHMEM 
-    target_link_libraries(${name} PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
+    #target_link_libraries(${name} PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
     target_link_libraries(${name} PUBLIC "-L${OPENSHMEM_HOME}/lib64" -lsma)
     set_target_properties(${name} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
@@ -86,7 +86,7 @@ macro(add_experiment name)
     add_executable(${name} experiments/${name}.cu)
 
     target_include_directories(${name} PUBLIC include)
-    target_include_directories(${name} PUBLIC "${NVSHMEM_HOME}/include")
+    #target_include_directories(${name} PUBLIC "${NVSHMEM_HOME}/include")
     target_include_directories(${name} PUBLIC "${OPENSHMEM_HOME}/include")
     target_include_directories(${name} PUBLIC "$ENV{MPICH_DIR}/include")
     target_include_directories(${name} PUBLIC "${GALATIC_HOME}/include")
@@ -95,7 +95,7 @@ macro(add_experiment name)
     target_include_directories(${name} PUBLIC "${COMBBLAS_HOME}/include")
 
     # Link NVSHMEM 
-    target_link_libraries(${name} PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
+    #target_link_libraries(${name} PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
     target_link_libraries(${name} PUBLIC "-L${OPENSHMEM_HOME}/lib64" -lsma)
     set_target_properties(${name} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 

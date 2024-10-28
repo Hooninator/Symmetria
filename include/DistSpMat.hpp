@@ -43,18 +43,22 @@ public:
                         this->tile_sizes.data(), 1, MPIType<IT>(), 
                         this->proc_map->get_world_comm());
 
+        DEBUG_PRINT("Allgather tile sizes");
+        DEBUG_PRINT(STR(this->loc_nnz));
+        DEBUG_PRINT(STR(this->loc_m));
+
 #ifdef DEBUG
         logptr->log_vec(this->tile_sizes, "Tile sizes");
 #endif
-        
-        this->ds_vals = ((DT *)nvshmem_malloc(this->loc_nnz * sizeof(DT)));
 
-        this->ds_colinds = ((IT *)nvshmem_malloc(this->loc_nnz * sizeof(IT)));
-    
-        this->ds_rowptrs = ((IT *)nvshmem_malloc((this->loc_m+1) * sizeof(IT)));
+        CUDA_CHECK(cudaMalloc(&this->ds_vals, this->loc_nnz * sizeof(DT)));
+        CUDA_CHECK(cudaMalloc(&this->ds_colinds, this->loc_nnz * sizeof(IT)));
+        CUDA_CHECK(cudaMalloc(&this->ds_rowptrs, (this->loc_m + 1) * sizeof(IT)));
 
         if (this->loc_nnz==0)
             return;
+        
+        DEBUG_PRINT("Allocated memory on shared heap");
 
         START_TIMER("CSRConstruction");
 
@@ -208,9 +212,9 @@ public:
 
     ~DistSpMat()
     {
-        NVSHMEM_FREE_SAFE(ds_vals);
-        NVSHMEM_FREE_SAFE(ds_colinds);
-        NVSHMEM_FREE_SAFE(ds_rowptrs);
+        CUDA_FREE_SAFE(ds_vals);
+        CUDA_FREE_SAFE(ds_colinds);
+        CUDA_FREE_SAFE(ds_rowptrs);
     }
 
     inline void set_rows(const IT _m) {m=_m;}

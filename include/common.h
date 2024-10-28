@@ -15,9 +15,6 @@
 #include <mpi.h>
 #include <omp.h>
 
-#include <nvshmem.h>
-#include <nvshmemx.h>
-
 #include <shmem.h>
 #include <shmemx.h>
 
@@ -53,9 +50,11 @@
     }                                                                \
 } while(0)
 
-#define ERROR(msg) {std::cerr<<msg<<std::endl; exit(1);}
+#define CUDA_FREE_SAFE(buf) do { \
+    if (buf != nullptr) cudaFree(buf); \
+} while (0)
 
-#define NVSHMEM_FREE_SAFE(ptr) {if (ptr!=nullptr) nvshmem_free(ptr);}
+#define ERROR(msg) {std::cerr<<msg<<std::endl; exit(1);}
 
 #ifdef DEBUG
 #define DEBUG_PRINT(msg) do {\
@@ -102,9 +101,6 @@ Timer * timer_ptr;
 Log * logptr;
 
 cusparseHandle_t cusparse_handle;
-
-nvshmemx_init_attr_t attr;
-
 
 }
 

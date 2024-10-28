@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "DistSpMat.hpp"
+#include "DistSpMatCyclic.hpp"
 #include "matrix_market_io.h"
 #include "semirings.cuh"
 
@@ -19,11 +20,8 @@ void symmetria_init()
     /* OpenSHMEM */
     shmem_init();
 
-    /* NVSHMEM */
-    nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
-
-    my_pe = nvshmem_my_pe();
-    n_pes = nvshmem_n_pes();
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_pe);
+    MPI_Comm_size(MPI_COMM_WORLD, &n_pes);
 
     cudaGetDeviceCount(&n_pes_node);
 
@@ -31,8 +29,6 @@ void symmetria_init()
 
     /* cuSPARSE */
     CUSPARSE_CHECK(cusparseCreate(&cusparse_handle));
-
-    //TODO: GALATIC?
 
     /* Logfiles */
 #ifdef DEBUG
@@ -47,7 +43,6 @@ void symmetria_init()
 
 void symmetria_finalize()
 {
-    nvshmem_finalize();
     shmem_finalize();
     MPI_Finalize();
 
