@@ -118,4 +118,5 @@ add_test(hello_world)
 add_test(test_transpose)
 add_test(test_local_mult)
 add_test(test_spsyrk_bulksync_1d)
+add_test(test_spsyrk_cyclic_2d)
 

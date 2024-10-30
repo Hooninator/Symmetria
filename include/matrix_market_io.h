@@ -175,8 +175,6 @@ void read_mm(const char * path, Mat& A)
     A.set_cols(send_buf[1]);
     A.set_nnz(send_buf[2]);
 
-    A.set_loc_dims();
-
     MPI_Offset header_offset = send_buf[3];
 
     delete[] send_buf;

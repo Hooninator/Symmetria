@@ -43,14 +43,6 @@ public:
                         this->tile_sizes.data(), 1, MPIType<IT>(), 
                         this->proc_map->get_world_comm());
 
-        DEBUG_PRINT("Allgather tile sizes");
-        DEBUG_PRINT(STR(this->loc_nnz));
-        DEBUG_PRINT(STR(this->loc_m));
-
-#ifdef DEBUG
-        logptr->log_vec(this->tile_sizes, "Tile sizes");
-#endif
-
         CUDA_CHECK(cudaMalloc(&this->ds_vals, this->loc_nnz * sizeof(DT)));
         CUDA_CHECK(cudaMalloc(&this->ds_colinds, this->loc_nnz * sizeof(IT)));
         CUDA_CHECK(cudaMalloc(&this->ds_rowptrs, (this->loc_m + 1) * sizeof(IT)));
@@ -58,8 +50,6 @@ public:
         if (this->loc_nnz==0)
             return;
         
-        DEBUG_PRINT("Allocated memory on shared heap");
-
         START_TIMER("CSRConstruction");
 
         std::vector<DT> * h_vals = new std::vector<DT>();
@@ -71,18 +61,9 @@ public:
         std::vector<IT> * h_rowptrs = new std::vector<IT>();
         h_rowptrs->resize(this->loc_m + 1);
 
-        DEBUG_PRINT("Starting CSR building");
-
         this->build_csr_fast(triples, h_vals, h_colinds, h_rowptrs, this->loc_m);
 
-
         STOP_TIMER("CSRConstruction");
-
-        DEBUG_PRINT("Done building CSR arrays");
-
-#ifdef DEBUG
-        logptr->log_vec(*h_rowptrs, "rowptrs", "End rowptrs");
-#endif
 
         START_TIMER("CSRCopy");
             
