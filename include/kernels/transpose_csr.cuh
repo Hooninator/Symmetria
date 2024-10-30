@@ -2,39 +2,9 @@
 #define TRANSPOSE_CSR_CUH
 
 #include "../common.h"
-
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <thrust/sort.h>
-#include <thrust/copy.h>
-#include <thrust/binary_search.h>
-#include <thrust/adjacent_difference.h>
-#include <thrust/iterator/counting_iterator.h>
+#include "histogram.cuh"
 
 namespace symmetria {
-
-
-/* Count nnz per column, return result in a device vector.
- * Approach is the same as https://github.com/NVIDIA/thrust/blob/master/examples/histogram.cu */
-template <typename IT1, typename IT2>
-thrust::device_vector<IT1> count_nnz_per_col(const IT2 * d_colinds, 
-                                                const IT1 nnz, const IT1 ncols)
-{
-
-    thrust::device_vector<IT1> histogram(ncols);
-    thrust::device_vector<IT2> colinds_vec(d_colinds, d_colinds + nnz);
-
-    thrust::sort(colinds_vec.begin(), colinds_vec.end());
-    thrust::counting_iterator<IT1> search(0);
-    thrust::upper_bound(colinds_vec.begin(), colinds_vec.end(),
-                        search, search + ncols,
-                        histogram.begin());
-
-    thrust::adjacent_difference(histogram.begin(), histogram.end(), histogram.begin());
-
-    return histogram;
-
-}
 
 
 /* Perform the actual transpose. One warp per row*/
@@ -71,7 +41,7 @@ __global__ void transpose_kernel(const DT * d_vals, const IT * d_colinds, const 
 template <typename T>
 dCSR<T> transpose_outofplace(const dCSR<T>& A)
 {
-    auto nnz_per_col = count_nnz_per_col(A.col_ids, A.nnz, A.cols);
+    auto nnz_per_col = make_histogram(A.col_ids, A.nnz, A.cols);
 
     unsigned int * d_offsets;
     CUDA_CHECK(cudaMalloc(&d_offsets, sizeof(unsigned int ) * A.cols));

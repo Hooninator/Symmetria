@@ -93,6 +93,14 @@ public:
     }
 
 
+    void add_triple(const Triple& to_add)
+    {
+        triples.emplace_back(std::get<0>(to_add),
+                             std::get<1>(to_add),
+                             std::get<2>(to_add));
+    }
+
+
     /* Use std::sort then linear scan */
     template <typename SR>
     void sort_merge_sequential(const SR& semiring)

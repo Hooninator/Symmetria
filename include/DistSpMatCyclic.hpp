@@ -18,6 +18,8 @@ class DistSpMatCyclic
 
 public:
 
+    using Triple = std::tuple<IT, IT, DT>;
+
     DistSpMatCyclic(){}
 
     DistSpMatCyclic(const IT m, const IT n, const IT nnz,
@@ -33,61 +35,65 @@ public:
     }
 
 
-    DistSpMatCyclic(const IT m, const IT n, const IT nnz,
-                    const IT mb, const IT nb,
-                    std::shared_ptr<ProcMap> proc_map,
-                    std::vector<SpMat<IT, DT>>& local_matrices):
-        m(m), n(n), nnz(nnz),
-        mtiles(m / mb), ntiles(n / nb),
-        local_matrices(local_matrices),
-        proc_map(proc_map)
-    {
-        assert(mb <= (m / proc_map->get_px()));
-        assert(nb <= (n / proc_map->get_py()));
-    }
+    virtual int tile_owner(Triple& t) {assert(false);}
+    virtual Triple map_glob_to_tile(Triple& t) {assert(false);}
 
 
     void set_from_coo(CooTriples<IT, DT> * triples)
     {
 
         /* Map each triple to the tile that owns it */
+        std::vector<CooTriples<IT, DT>> tile_triples(this->n_local_tiles);
+
+        std::for_each(triples->begin(), triples->end(),
+            [&](auto& t)
+            {
+                int target_tile = this->tile_owner(t);
+                tile_triples[target_tile].add_triple(t);
+            }
+        );
 
         /* Convert indices to tile indices */
+        for (auto& this_tile_triples : tile_triples)
+        {
+            std::for_each(this_tile_triples.begin(), this_tile_triples.end(),
+                [&](auto& t)mutable
+                {
+                    return this->map_glob_to_tile(t);
+                }
+            );
+        }
 
         /* Build the CSR arrays for each tile */
+        for (int i=0; i<tile_triples.size(); i++) 
+        {
+            auto& this_tile_triples = tile_triples[i];
+            local_matrices.emplace_back(mb + row_edge_size(i),
+                                          nb + col_edge_size(i), 
+                                          this_tile_triples);
+        }
+        
+        
+        /* Allgather local tile sizes */
 
     }
 
 
-    void build_csr_fast(CooTriples<IT, DT> * triples,
-                        std::vector<DT> * h_vals,
-                        std::vector<IT> * h_colinds,
-                        std::vector<IT> * h_rowptrs,
-                        const IT rows)
+    int row_edge_size(const int tidx)
     {
-        std::vector<IT> row_nnz(rows);
-        std::for_each(triples->begin(), triples->end(),
-            [&](auto const& t)mutable
-            {
-                row_nnz[std::get<0>(t)]++;
-            }
-        );
+        int tiles_along_dim = static_cast<int>(std::sqrt(this->n_local_tiles));
+        if (tidx / tiles_along_dim == (tiles_along_dim - 1))
+            return m - (( m / mb) * mb) ;
+        return 0;
+    }
 
-        std::inclusive_scan(row_nnz.begin(), row_nnz.end(), 
-                            h_rowptrs->begin()+1);
 
-        std::fill(row_nnz.begin(), row_nnz.end(), IT(0));
-
-        for (int i=0; i<triples->get_nnz(); i++)
-        {
-            auto const t = triples->at(i);
-            const IT rid = std::get<0>(t);
-            const IT idx = h_rowptrs->at(rid) + row_nnz[rid];
-            h_colinds->at(idx) = std::get<1>(t);
-            h_vals->at(idx) = std::get<2>(t);
-            row_nnz[rid]++;
-        }
-
+    int col_edge_size(const int tidx)
+    {
+        int tiles_along_dim = static_cast<int>(std::sqrt(this->n_local_tiles));
+        if (tidx % tiles_along_dim == (tiles_along_dim - 1))
+            return n - (( n / nb) * nb) ;
+        return 0;
     }
 
 
@@ -100,6 +106,7 @@ public:
     inline IT get_nnz() {return nnz;}
 
     inline std::vector<SpMat<IT, DT>> get_local_matrices() {return local_matrices;}
+    inline int get_n_local_tiles() {return n_local_tiles;}
 
     std::shared_ptr<ProcMap> proc_map;
 
@@ -110,6 +117,7 @@ protected:
     IT mb, nb;
     IT mtiles, ntiles;
     std::vector<SpMat<IT, DT>> local_matrices;
+    int n_local_tiles;
 
 };
 
@@ -126,6 +134,7 @@ public:
                     std::shared_ptr<ProcMap> proc_map):
         DistSpMatCyclic<IT, DT>(m, n, nnz, mb, nb, proc_map)
     {
+        this->n_local_tiles = (this->mtiles / this->proc_map->get_px()) * (this->ntiles / this->proc_map->get_py());
     }
 
 
@@ -186,6 +195,9 @@ public:
                             * (this->ntiles / this->proc_map->get_py());
         int col_contrib = std::min(j / (this->nb * this->proc_map->get_py()), 
                                     this->ntiles / this->proc_map->get_py());
+
+        assert((row_contrib + col_contrib) < this->n_local_tiles);
+
         return row_contrib + col_contrib;
     }
 
