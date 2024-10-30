@@ -19,9 +19,12 @@ public:
     SpMat(const IT m, const IT n, const IT nnz):
         m(m), n(n), nnz(nnz)
     {
+        //TODO: store in contiguous buffer from one malloc
         CUDA_CHECK(cudaMalloc(&this->ds_vals, nnz * sizeof(DT)));
         CUDA_CHECK(cudaMalloc(&this->ds_colinds, nnz * sizeof(IT)));
         CUDA_CHECK(cudaMalloc(&this->ds_rowptrs, (m + 1) * sizeof(IT)));
+
+        //TODO: Make MPI_Wins referencing each buffer
     }
 
 

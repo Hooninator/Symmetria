@@ -25,22 +25,36 @@ public:
                     std::shared_ptr<ProcMap> proc_map):
         m(m), n(n), nnz(nnz),
         mb(mb), nb(nb),
-        mtiles(m / mb), ntiles(n / nb)
-    {}
+        mtiles(m / mb), ntiles(n / nb),
+        proc_map(proc_map)
+    {
+        assert(mb <= (m / proc_map->get_px()));
+        assert(nb <= (n / proc_map->get_py()));
+    }
 
 
     DistSpMatCyclic(const IT m, const IT n, const IT nnz,
                     const IT mb, const IT nb,
-                    std::vector<SpMat<IT, DT>>& local_matrices,
-                    std::shared_ptr<ProcMap> proc_map):
+                    std::shared_ptr<ProcMap> proc_map,
+                    std::vector<SpMat<IT, DT>>& local_matrices):
         m(m), n(n), nnz(nnz),
         mtiles(m / mb), ntiles(n / nb),
-        local_matrices(local_matrices)
-    {}
+        local_matrices(local_matrices),
+        proc_map(proc_map)
+    {
+        assert(mb <= (m / proc_map->get_px()));
+        assert(nb <= (n / proc_map->get_py()));
+    }
 
 
     void set_from_coo(CooTriples<IT, DT> * triples)
     {
+
+        /* Map each triple to the tile that owns it */
+
+        /* Convert indices to tile indices */
+
+        /* Build the CSR arrays for each tile */
 
     }
 
@@ -117,23 +131,62 @@ public:
 
     Triple map_glob_to_local(const Triple& t)
     {
+        return t;
     }
 
 
-    Triple map_local_to_tile(const Triple& t)
+    /* This maps a triple with global coordinates to local tile coordinates */
+    Triple map_glob_to_tile(const Triple& t)
     {
+
+        IT loc_i = std::get<0>(t) % this->mb;
+        IT loc_j = std::get<1>(t) % this->nb;
+
+        IT mp = (this->m / this->mb) * this->mb;
+        IT np = (this->n / this->nb) * this->nb;
+
+        if (std::get<0>(t) >= this->mp)
+            loc_i += (std::get<t>(0) - this->mp);
+        if (std::get<1>(t) >= this->np)
+            loc_j += (std::get<t>(1) - this->np);
+        
+        return {loc_i, loc_j, std::get<2>(t)};
+
     }
 
 
+    /* Which process owns this */
     int owner(const Triple& t)
     {
-        return 0;
+        IT i = std::get<0>(t);
+        IT j = std::get<1>(t);
+
+        int row_contrib = (std::min((i / this->mb), this->mtiles - 1) % this->proc_map->get_px())
+                            * this->proc_map->get_py();
+        int col_contrib = std::min((j / this->nb), this->ntiles - 1) % this->proc_map->get_py();
+
+        assert ((row_contrib + col_contrib) < this->proc_map->get_grid_size());
+
+        return row_contrib + col_contrib;
     }
 
 
+    /* Which of my tiles owns this.
+     * The tiles are stored in row major order 
+     * At this point, we can assume the triple is local to the process
+     * but its indices are global.
+     */
     int tile_owner(const Triple& t)
     {
-        return 0;
+        IT i = std::get<0>(t);
+        IT j = std::get<1>(t);
+        //int num_tiles = (this->mtiles / this->proc_map->get_px()) * (this->ntiles / this->proc_map->get_py());
+        int row_contrib = std::min(i / (this->mb * this->proc_map->get_px()), 
+                                  this->mtiles / this->proc_map->get_px()) 
+                            * (this->ntiles / this->proc_map->get_py());
+        int col_contrib = std::min(j / (this->nb * this->proc_map->get_py()), 
+                                    this->ntiles / this->proc_map->get_py());
+        return row_contrib + col_contrib;
     }
 
 
