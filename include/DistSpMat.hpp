@@ -80,7 +80,6 @@ public:
         delete h_vals;
         delete h_colinds;
         delete h_rowptrs;
-        delete triples;
 
         MPI_Barrier(this->proc_map->get_world_comm());
     }

@@ -27,7 +27,7 @@
 #include "utils/colors.h"
 #include "utils/MPITypes.h"
 
-//#define DEBUG
+#define DEBUG
 //#define DEBUG_LOG
 #define TIMING
 //#define THREADED //For combblas

@@ -28,23 +28,32 @@ public:
         const uint32_t nnz = test.nnz;
         const uint32_t mb = 2;
         const uint32_t nb = 2;
+        const uint32_t mtiles = std::ceil( (float)m / (float)mb );
+        const uint32_t ntiles = std::ceil( (float)n / (float)nb );
+
         const std::string name(test.name);
         const std::string path(std::string("../test/test_matrices/")+test.name+".mtx");
         const std::string product_path(std::string("../test/test_matrices/")+test.name+"_product.mtx");
 
-        std::shared_ptr<ProcMap> proc_map = std::make_shared<ProcMap>(n_pes, MPI_COMM_WORLD);
+        TEST_PRINT("Making proc map");
+        std::shared_ptr<ProcMapCyclic2D> proc_map = std::make_shared<ProcMapCyclic2D>((int)sqrt(n_pes), (int)sqrt(n_pes), 
+                                                                                        mtiles, ntiles, MPI_COMM_WORLD);
+        TEST_PRINT("Made proc map");
 
         /* Read in matrix */
-        DistSpMatCyclic2D<IT, DT> A(m, n, mb, nb, nnz, proc_map);
+        DistSpMatCyclic2D<IT, DT, ProcMapCyclic2D> A(m, n, nnz, mb, nb, proc_map);
+        TEST_PRINT("Made matrix");
+
         symmetria::io::read_mm<IT, DT>(path.c_str(), A);
         MPI_Barrier(MPI_COMM_WORLD);
+        TEST_PRINT("Done with IO");
+        /*
 
-        /* Do SpSYRK */
         using Semiring = PlusTimesSemiring<DT>;
 
         TEST_PRINT("Done with SpSYRK");
+        */
 
-        /* Correctness check */
 
         return true;
     };

@@ -232,6 +232,7 @@ void read_mm(const char * path, Mat& A)
     MPI_File_close(&file_handle);
 
     DEBUG_PRINT("Done reading matrix");
+    delete local_tuples;
 
 }
 

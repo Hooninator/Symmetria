@@ -31,14 +31,11 @@ public:
     ProcMap(const int x, const int y, const MPI_Comm comm):
         px(x), py(y), pz(1), world_comm(comm), grid_size(x*y)
     {
-
+        assert(y==x);
         MPI_Comm_size(comm, &n_procs);
         assert(n_procs==px*py*pz);
-
         set_ranks();
-
         make_comms();
-
     }
 
 
@@ -79,7 +76,7 @@ public:
         key = row_rank;
         MPI_Comm_split(MPI_COMM_WORLD, color, key, &row_comm);
 
-        /* Coll comm */
+        /* Col comm */
         color = rank % py;
         key = col_rank;
         MPI_Comm_split(MPI_COMM_WORLD, color, key, &col_comm);
@@ -122,7 +119,7 @@ public:
     inline int get_col_rank() const {return col_rank;}
     inline int get_fiber_rank() const {return fiber_rank;}
 
-private:
+protected:
 
     MPI_Comm world_comm;
     MPI_Comm row_comm;
@@ -141,6 +138,48 @@ private:
     int col_rank;
     int fiber_rank;
     int grid_rank;
+
+};
+
+
+class ProcMapCyclic2D : public ProcMap
+{
+public:
+    ProcMapCyclic2D(const int x, const int y, 
+                    const int mtiles, const int ntiles,
+                    const MPI_Comm comm):
+        ProcMap(x, y, comm),
+        mtiles(mtiles), ntiles(ntiles),
+        tile_owners(mtiles)
+    {
+        for (int i=0; i<mtiles; i++)
+            tile_owners[i].resize(ntiles);
+        //assert(mtiles==ntiles);
+        set_tile_owners();
+    }
+
+
+    void set_tile_owners()
+    {
+        for (int i=0; i<mtiles; i++)
+        {
+            for (int j=0; j<ntiles; j++)
+            {
+                int owner = (j % this->py) + (i % this->px) * this->py;
+                tile_owners[i][j] = owner;
+                if (owner==this->rank)
+                    my_tile_inds.push_back({i, j});
+            }
+        }
+    }
+
+    inline std::vector<std::vector<int>> get_tile_owners() {return tile_owners;}
+    inline std::vector<std::pair<int, int>> get_my_tile_inds() {return my_tile_inds;}
+
+private:
+    int mtiles, ntiles;
+    std::vector<std::vector<int>> tile_owners;
+    std::vector<std::pair<int, int>> my_tile_inds;
 
 };
 

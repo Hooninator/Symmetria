@@ -12,6 +12,7 @@
 #include <thrust/host_vector.h>
 #include <thrust/scan.h>
 #include <thrust/fill.h>
+#include <thrust/for_each.h>
 
 
 namespace symmetria
@@ -43,7 +44,7 @@ public:
                         const IT rows)
     {
         thrust::host_vector<IT> row_nnz(rows);
-        std::for_each(triples.begin(), triples.end(),
+        thrust::for_each(triples.begin(), triples.end(),
             [&](auto const& t)mutable
             {
                 row_nnz[std::get<0>(t)]++;
@@ -54,10 +55,10 @@ public:
         thrust::inclusive_scan(d_row_nnz.begin(), d_row_nnz.end(), 
                                 thrust::device_pointer_cast(this->ds_rowptrs)+1);
 
-        thrust::fill_n(d_row_nnz.begin(), triples.get_nnz(), IT(0));
+        thrust::fill_n(d_row_nnz.begin(), rows, IT(0));
 
         Triple * d_triples;
-        CUDA_CHECK(cudaMalloc(&d_triples, sizeof(Triple)));
+        CUDA_CHECK(cudaMalloc(&d_triples, sizeof(Triple) * triples.get_nnz()));
         CUDA_CHECK(cudaMemcpy(d_triples, triples.get_triples().data(), sizeof(Triple) * triples.get_nnz(),
                                 cudaMemcpyHostToDevice));
 
@@ -71,6 +72,11 @@ public:
 
         CUDA_FREE_SAFE(d_triples);
     }
+
+
+    inline IT get_m() {return m;}
+    inline IT get_n() {return n;}
+    inline IT get_nnz() {return nnz;}
 
 
     ~SpMat()
