@@ -7,6 +7,7 @@
 #include "dCSR.cuh"
 #include "dCSR_utils.cuh"
 #include "SpMat.hpp"
+#include "TileWindow.hpp"
 
 namespace symmetria
 {
@@ -84,6 +85,12 @@ public:
     }
 
 
+    void setup_tile_window()
+    {
+        //TODO
+    }
+
+
     int row_edge_size(const int tidx)
     {
         if (this->proc_map->get_col_rank() != this->proc_map->get_px() - 1)
@@ -129,6 +136,8 @@ protected:
     IT mtiles, ntiles;
     std::vector<SpMat<IT, DT>> local_matrices;
     int n_local_tiles;
+
+    std::shared_ptr<TileWindow<IT, DT>> tile_window;
 
 };
 

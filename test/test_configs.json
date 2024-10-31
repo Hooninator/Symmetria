@@ -6,6 +6,18 @@
         "nnz": 16
     },
     {
+        "name": "n17" ,
+        "rows": 17 ,
+        "cols": 17 ,
+        "nnz": 200
+    },
+    {
+        "name": "ts_small" ,
+        "rows": 100,
+        "cols": 10,
+        "nnz":100 
+    },
+    {
         "name": "n500" ,
         "rows": 500,
         "cols": 500,
@@ -16,12 +28,6 @@
         "rows": 1000 ,
         "cols": 1000 ,
         "nnz": 10000
-    },
-    {
-        "name": "ts_small" ,
-        "rows": 100,
-        "cols": 10,
-        "nnz":100 
     }
 ]
 

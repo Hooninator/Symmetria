@@ -28,11 +28,15 @@ public:
     SpMat(const IT m, const IT n, CooTriples<IT, DT>& triples):
         m(m), n(n), nnz(triples.get_nnz())
     {
-        //TODO: store in contiguous buffer from one malloc
-        CUDA_CHECK(cudaMalloc(&this->ds_vals, nnz * sizeof(DT)));
-        CUDA_CHECK(cudaMalloc(&this->ds_colinds, nnz * sizeof(IT)));
-        CUDA_CHECK(cudaMalloc(&this->ds_rowptrs, (m + 1) * sizeof(IT)));
+		//TODO: Make this work with arbitrary alignments. Not needed now
+		size_t offset_vals = 0;
+		size_t offset_colinds = (nnz * sizeof(DT) + 7) & ~7;  // Round up to nearest 8 bytes
+		size_t offset_rowptrs = (offset_colinds + nnz * sizeof(IT) + 7) & ~7;
 
+		CUDA_CHECK(cudaMalloc(&this->baseptr, offset_rowptrs + (m + 1) * sizeof(IT)));
+		this->ds_vals = (DT*)this->baseptr;
+		this->ds_colinds = (IT*)((char*)this->baseptr + offset_colinds);
+		this->ds_rowptrs = (IT*)((char*)this->baseptr + offset_rowptrs);
         //TODO: Make MPI_Wins referencing each buffer
 
 
@@ -81,9 +85,12 @@ public:
 
     ~SpMat()
     {
+        /*
         CUDA_FREE_SAFE(ds_vals);
         CUDA_FREE_SAFE(ds_colinds);
         CUDA_FREE_SAFE(ds_rowptrs);
+        */
+        CUDA_FREE_SAFE(baseptr);
     }
 
 private:
@@ -91,6 +98,7 @@ private:
     DT * ds_vals;
     IT * ds_colinds;
     IT * ds_rowptrs;
+    char * baseptr;
 };
 
 }
