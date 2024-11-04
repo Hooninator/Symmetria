@@ -33,7 +33,10 @@ public:
     {
         assert(mb <= (m / proc_map->get_px()));
         assert(nb <= (n / proc_map->get_py()));
-        tile_sizes.resize(mtiles * ntiles);
+        tile_nnz.resize(mtiles * ntiles);
+        tile_rows.resize(mtiles * ntiles);
+        tile_cols.resize(mtiles * ntiles);
+        window_offsets.resize(mtiles * ntiles);
     }
 
 
@@ -58,36 +61,73 @@ public:
         );
 
 
-        DEBUG_PRINT("Making CSR arrays");
+        DEBUG_PRINT("Making local size arrays");
 
+        auto const& tile_inds = this->proc_map->get_my_tile_inds();
+
+        uint64_t window_size = 0;
         /* Build the CSR arrays for each tile */
         for (int i=0; i<tile_triples.size(); i++) 
         {
-            auto& this_tile_triples = tile_triples[i];
-            local_matrices.emplace_back(mb + row_edge_size(i),
-                                          nb + col_edge_size(i), 
-                                          this_tile_triples);
-        }
-        
-        DEBUG_PRINT("Allreducing");
-        /* Allreduce local tile sizes */
-        auto const& tile_inds = this->proc_map->get_my_tile_inds();
-        for (int i=0; i<tile_inds.size(); i++)
-        {
             auto& p = tile_inds[i];
-            tile_sizes[p.first * ntiles + p.second] = local_matrices[i].get_nnz();
+
+            tile_nnz[p.first * ntiles + p.second] = tile_triples[i].get_nnz();
+            tile_rows[p.first * ntiles + p.second] = mb + row_edge_size(i);
+            tile_cols[p.first * ntiles + p.second] = nb + col_edge_size(i);
+
+            window_size += aligned_tile_size(tile_triples[i].get_nnz(), 
+                                                mb + row_edge_size(i));
         }
-        MPI_Allreduce(MPI_IN_PLACE, tile_sizes.data(), tile_sizes.size(), MPIType<IT>(), MPI_SUM, 
-                        this->proc_map->get_world_comm());
+
+        DEBUG_PRINT("Allreducing");
+        MPI_Allreduce(MPI_IN_PLACE, 
+                      tile_nnz.data(), tile_nnz.size(), 
+                      MPIType<IT>(), MPI_SUM, 
+                      this->proc_map->get_world_comm());
+        MPI_Allreduce(MPI_IN_PLACE, 
+                      tile_rows.data(), tile_rows.size(), 
+                      MPIType<IT>(), MPI_SUM, 
+                      this->proc_map->get_world_comm());
+        MPI_Allreduce(MPI_IN_PLACE, 
+                      tile_cols.data(), tile_cols.size(), 
+                      MPIType<IT>(), MPI_SUM, 
+                      this->proc_map->get_world_comm());
+
+        DEBUG_PRINT("Making tile window");
+        this->tile_window = std::make_shared<TileWindow<IT, DT>>(window_size);
+        place_tiles(tile_triples);
 
         DEBUG_PRINT("Done");
 
     }
 
 
-    void setup_tile_window()
+    void place_tiles(std::vector<CooTriples<IT, DT>>& tile_triples)
     {
-        //TODO
+        auto const& tile_inds = this->proc_map->get_my_tile_inds();
+        for (int i=0; i<tile_triples.size(); i++)
+        {
+            auto& p = tile_inds[i];
+            auto offset = tile_window->add_tile(tile_triples[i], 
+                                            mb + row_edge_size(i), 
+                                            nb + col_edge_size(i));
+            window_offsets[p.first * ntiles + p.second] = offset;
+        }
+
+        MPI_Allreduce(MPI_IN_PLACE, 
+                      window_offsets.data(), window_offsets.size(), 
+                      MPIType<IT>(), MPI_SUM, 
+                      this->proc_map->get_world_comm());
+    }
+
+
+    uint64_t aligned_tile_size(const IT nnz, const IT m)
+    {
+        if (nnz==0) return 0;
+        auto vals_size = aligned_offset<DT>(nnz * sizeof(DT));
+        auto colinds_size = aligned_offset<DT>(nnz * sizeof(IT));
+        auto rowptrs_size = aligned_offset<DT>((m+1)*sizeof(IT)); //align for next tile
+        return vals_size + colinds_size + rowptrs_size;
     }
 
 
@@ -121,23 +161,25 @@ public:
     inline IT get_cols() {return n;}
     inline IT get_nnz() {return nnz;}
 
-    inline std::vector<SpMat<IT, DT>> get_local_matrices() {return local_matrices;}
+    inline std::vector<SpMat<IT, DT>> get_local_matrices() {return tile_window->get_local_matrices();}
     inline int get_n_local_tiles() {return n_local_tiles;}
-
     
 
     std::shared_ptr<P> proc_map;
 
 protected:
     IT m, n, nnz;
-    std::vector<IT> tile_sizes;
+    std::vector<IT> tile_nnz;
+    std::vector<IT> tile_rows;
+    std::vector<IT> tile_cols;
+
 
     IT mb, nb;
     IT mtiles, ntiles;
-    std::vector<SpMat<IT, DT>> local_matrices;
     int n_local_tiles;
 
     std::shared_ptr<TileWindow<IT, DT>> tile_window;
+    std::vector<uint64_t> window_offsets;
 
 };
 

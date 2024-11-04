@@ -47,13 +47,11 @@ public:
         symmetria::io::read_mm<IT, DT>(path.c_str(), A);
         MPI_Barrier(MPI_COMM_WORLD);
         TEST_PRINT("Done with IO");
+
         /*
-
         using Semiring = PlusTimesSemiring<DT>;
-
         TEST_PRINT("Done with SpSYRK");
         */
-
 
         return true;
     };

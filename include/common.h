@@ -17,6 +17,8 @@
 
 #include <shmem.h>
 #include <shmemx.h>
+#include <nvshmem.h>
+#include <nvshmemx.h>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -26,6 +28,7 @@
 #include "utils/Log.hpp"
 #include "utils/colors.h"
 #include "utils/MPITypes.h"
+#include "utils/alignment.h"
 
 #define DEBUG
 //#define DEBUG_LOG
@@ -52,6 +55,9 @@
 
 #define CUDA_FREE_SAFE(buf) do { \
     if (buf != nullptr) cudaFree(buf); \
+} while (0)
+#define NVSHMEM_FREE_SAFE(buf) do { \
+        if (buf != nullptr) nvshmem_free(buf); \
 } while (0)
 
 #define ERROR(msg) {std::cerr<<msg<<std::endl; exit(1);}
@@ -90,7 +96,6 @@
 
 namespace symmetria {
 
-
 /* GLOBALS */
 int my_pe;
 int my_pe_node;
@@ -100,6 +105,7 @@ int n_pes_node;
 Timer * timer_ptr;
 Log * logptr;
 
+nvshmemx_init_attr_t attr;
 cusparseHandle_t cusparse_handle;
 
 }

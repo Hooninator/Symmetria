@@ -183,9 +183,6 @@ private:
 
 };
 
-//TODO: Block cyclic map
-
-
 
 }
 

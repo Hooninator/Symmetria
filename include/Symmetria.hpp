@@ -12,20 +12,26 @@
 
 namespace symmetria {
 
+
 void symmetria_init()
 {
     /* MPI */
     MPI_Init(nullptr, nullptr);
 
+    /* NVSHMEM */
+    MPI_Comm comm = MPI_COMM_WORLD;
+    attr.mpi_comm = &(comm);
+    nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+
     /* OpenSHMEM */
     shmem_init();
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_pe);
-    MPI_Comm_size(MPI_COMM_WORLD, &n_pes);
+    my_pe = nvshmem_my_pe();
+    n_pes = nvshmem_n_pes();
 
-    cudaGetDeviceCount(&n_pes_node);
+    my_pe_node = nvshmem_team_my_pe(NVSHMEMX_TEAM_NODE);
 
-    my_pe_node = my_pe % n_pes_node;
+	cudaSetDevice(my_pe_node);
 
     /* cuSPARSE */
     CUSPARSE_CHECK(cusparseCreate(&cusparse_handle));
@@ -44,6 +50,8 @@ void symmetria_init()
 void symmetria_finalize()
 {
     shmem_finalize();
+    nvshmem_finalize();
+
     MPI_Finalize();
 
     CUSPARSE_CHECK(cusparseDestroy(cusparse_handle));
