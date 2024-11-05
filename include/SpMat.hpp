@@ -25,6 +25,8 @@ class SpMat
 
 public:
 
+    SpMat() {}
+
     SpMat(const IT m, const IT n, CooTriples<IT, DT>& triples,
             char * baseptr):
         m(m), n(n), nnz(triples.get_nnz()), baseptr(baseptr)
@@ -45,6 +47,22 @@ public:
 
             build_csr_fast(triples, m);
         }
+    }
+
+
+    SpMat(const IT m, const IT n, const IT nnz, char * d_buffer)
+    {
+        assert(nnz>0);
+        assert(sizeof(DT) >= sizeof(IT)); //otherwise alignment doesn't work
+
+		size_t offset_colinds = aligned_offset<DT>(nnz * sizeof(DT));  
+		size_t offset_rowptrs = aligned_offset<DT>(offset_colinds + nnz * sizeof(IT)) ;
+
+        total_bytes = aligned_offset<DT>(offset_rowptrs + (m + 1) * sizeof(IT));
+
+        this->ds_vals = (DT*)d_buffer;
+        this->ds_colinds = (IT*)(d_buffer + offset_colinds);
+        this->ds_rowptrs = (IT*)(d_buffer + offset_rowptrs);
     }
 
 

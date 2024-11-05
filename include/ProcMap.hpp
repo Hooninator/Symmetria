@@ -173,6 +173,9 @@ public:
         }
     }
 
+    inline int get_mtiles() {return mtiles;}
+    inline int get_ntiles() {return ntiles;}
+
     inline std::vector<std::vector<int>> get_tile_owners() {return tile_owners;}
     inline std::vector<std::pair<int, int>> get_my_tile_inds() {return my_tile_inds;}
 

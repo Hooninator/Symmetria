@@ -53,6 +53,15 @@
     }                                                                \
 } while(0)
 
+#define NVSHMEM_CHECK(call) do {                                    \
+    int err = call;                                     \
+    if (err != 0) {                            \
+        fprintf(stderr, "NVSHMEM error in file '%s' in line %i : %d.\n", \
+                __FILE__, __LINE__, err);    \
+        exit(EXIT_FAILURE);                                          \
+    }                                                                \
+} while(0)
+
 #define CUDA_FREE_SAFE(buf) do { \
     if (buf != nullptr) cudaFree(buf); \
 } while (0)

@@ -120,6 +120,41 @@ public:
                       this->proc_map->get_world_comm());
     }
 
+    
+    SpMat<IT, DT> get_tile_sync(int i, int j)
+    {
+
+        /* Which process owns tile (i,j)? */
+        int target_pe = proc_map->get_tile_owners()[i][j];
+
+        /* Where does that tile live in target's TileWindow? */
+        uint64_t offset = window_offsets[i * ntiles + j];
+
+        /* How large is that tile? */
+        uint64_t landing_zone_size = aligned_tile_size(tile_nnz[i*ntiles + j], tile_rows[i*ntiles + j]);
+
+        /* Remote tile is empty */
+        if (landing_zone_size==0)
+        {
+            return SpMat<IT, DT>();
+        }
+
+        /* Allocate landing zone for the tile */
+        char * d_landing_zone;
+        CUDA_CHECK(cudaMalloc(&d_landing_zone, landing_zone_size));
+
+        /* Register landing zone in the symmetric heap */
+        NVSHMEM_CHECK(nvshmemx_buffer_register(d_landing_zone, landing_zone_size));
+
+        /* Use NVSHMEM to fetch the tile */
+        tile_window->get_tile_sync(d_landing_zone, offset, landing_zone_size, target_pe);
+
+        /* Make the SpMat from the landing zone */
+        return SpMat<IT, DT>(tile_rows[i*ntiles + j], tile_cols[i*ntiles + j], tile_nnz[i*ntiles + j],
+                                d_landing_zone);
+
+    }
+
 
     uint64_t aligned_tile_size(const IT nnz, const IT m)
     {
@@ -162,6 +197,7 @@ public:
     inline IT get_nnz() {return nnz;}
 
     inline std::vector<SpMat<IT, DT>> get_local_matrices() {return tile_window->get_local_matrices();}
+    inline std::shared_ptr<TileWindow<IT, DT>> get_tile_window() {return tile_window;}
     inline int get_n_local_tiles() {return n_local_tiles;}
     
 

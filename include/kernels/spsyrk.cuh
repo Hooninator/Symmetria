@@ -3,6 +3,7 @@
 
 #include "../common.h"
 #include "../DistSpMat.hpp"
+#include "../DistSpMatCyclic.hpp"
 
 #include "local_mult.cuh"
 #include "transpose_csr.cuh"
@@ -181,7 +182,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Return final matrix */
     DistSpMat1DBlockRow<IT, DT> C(A.get_rows(), A.get_rows(), total_nnz,
                                     proc_map);
-    C.set_from_coo(&C_final); //do sort
+    C.set_from_coo(&C_final);
 
 #ifdef TIMING
     timer_ptr->stop_timer("OutputConstruction");
@@ -192,6 +193,44 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
 
 
+
+template <typename SR, typename IT, typename DT, typename P>
+DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
+{
+
+    /* Bookkeeping */
+    auto tile_window = A.get_tile_window();
+    auto proc_map = A.proc_map;
+    int np = proc_map->get_n_procs();
+    int rank = proc_map->get_rank();
+    auto my_tile_inds = proc_map->get_my_tile_inds();
+
+    /* To store output tuples prior to merging */
+    std::vector<std::tuple<IT, IT, DT>*> C_products;
+    IT * C_nnz_arr = new IT[rank+1];
+    
+    /* Main loop */
+    for (int tile_id = 0; tile_id<my_tile_inds.size(); tile_id++)
+    {
+        auto tile_inds = my_tile_inds[tile_id];
+        int i = tile_inds.first;
+        int j = tile_inds.second;
+
+        if (i < j) continue; //Skip if in strictly upper triangular region
+
+        for (int k=0; k<proc_map->get_ntiles(); k++)
+        {
+            /* Get kth tile in prow i and prow j */
+            auto A_tile = A.get_tile_sync(i, k);
+            auto A_t_tile = A.get_tile_sync(j, k);
+
+        }
+    }
+
+
+
+
+}
 
 
 }

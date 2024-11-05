@@ -37,6 +37,13 @@ public:
     }
 
 
+    void get_tile_sync(char * d_landing_zone, const uint64_t offset, const uint64_t landing_zone_size, 
+                        const int target_pe)
+    {
+        nvshmem_getmem(d_landing_zone, ds_buffer + offset, landing_zone_size, target_pe);
+    }
+
+
     ~TileWindow()
     {
         NVSHMEM_FREE_SAFE(ds_buffer);
