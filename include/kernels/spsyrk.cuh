@@ -222,13 +222,18 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         {
             /* Get kth tile in prow i and prow j */
             auto A_tile = A.get_tile_sync(i, k);
-            auto A_t_tile = A.get_tile_sync(j, k);
+            //auto A_t_tile = A.get_tile_sync(j, k);
+
+            A_tile.free();
+            //A_t_tile.free();
 
         }
     }
 
+    DistSpMatCyclic2D<IT, DT, P> C(A.get_rows(), A.get_rows(), A.get_mtiles(), A.get_mtiles(),
+                                    1, proc_map);
 
-
+    return C;
 
 }
 

@@ -124,6 +124,8 @@ public:
     SpMat<IT, DT> get_tile_sync(int i, int j)
     {
 
+        //TODO: If local tile, just set pointers without landing zone
+
         /* Which process owns tile (i,j)? */
         int target_pe = proc_map->get_tile_owners()[i][j];
 
@@ -195,6 +197,9 @@ public:
     inline IT get_rows() {return m;}
     inline IT get_cols() {return n;}
     inline IT get_nnz() {return nnz;}
+
+    inline IT get_mtiles() {return mtiles;}
+    inline IT get_ntiles() {return ntiles;}
 
     inline std::vector<SpMat<IT, DT>> get_local_matrices() {return tile_window->get_local_matrices();}
     inline std::shared_ptr<TileWindow<IT, DT>> get_tile_window() {return tile_window;}

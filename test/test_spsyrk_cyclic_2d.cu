@@ -48,10 +48,11 @@ public:
         MPI_Barrier(MPI_COMM_WORLD);
         TEST_PRINT("Done with IO");
 
-        /*
         using Semiring = PlusTimesSemiring<DT>;
+
+        auto C = spsyrk_cyclic_2d<Semiring>(A);
+
         TEST_PRINT("Done with SpSYRK");
-        */
 
         return true;
     };

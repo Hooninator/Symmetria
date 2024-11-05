@@ -105,6 +105,10 @@ public:
     inline IT get_nnz() {return nnz;}
     inline uint64_t get_total_bytes() {return total_bytes;}
 
+    void free()
+    {
+        CUDA_FREE_SAFE(baseptr);
+    }
 
     ~SpMat()
     {
