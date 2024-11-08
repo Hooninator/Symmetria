@@ -145,6 +145,7 @@ protected:
 class ProcMapCyclic2D : public ProcMap
 {
 public:
+    /* TODO: THis probably shouldn't exist and should be moved to DistSpMatCyclic */
     ProcMapCyclic2D(const int x, const int y, 
                     const int mtiles, const int ntiles,
                     const MPI_Comm comm):
@@ -154,7 +155,7 @@ public:
     {
         for (int i=0; i<mtiles; i++)
             tile_owners[i].resize(ntiles);
-        //assert(mtiles==ntiles);
+        assert(mtiles==ntiles);
         set_tile_owners();
     }
 

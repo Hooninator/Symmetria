@@ -26,8 +26,8 @@ public:
         const uint32_t m = test.rows;
         const uint32_t n = test.cols;
         const uint32_t nnz = test.nnz;
-        const uint32_t mb = 2;
-        const uint32_t nb = 2;
+        const uint32_t mb = 500;
+        const uint32_t nb = 500;
         const uint32_t mtiles = std::ceil( (float)m / (float)mb );
         const uint32_t ntiles = std::ceil( (float)n / (float)nb );
 

@@ -2,6 +2,7 @@
 #define DCSR_UTILS_CUH
 
 #include "common.h"
+#include "SpMat.hpp"
 
 #include "dCSR.cuh"
 #include "SemiRingInterface.h"
@@ -58,6 +59,22 @@ dCSR<T> make_dCSR_from_distspmat_outofplace(Mat& A_dist)
                             cudaMemcpyDeviceToDevice));
 
     return A;
+}
+
+
+template <typename DT, typename IT>
+dCSR<DT> make_dCSR_from_spmat(SpMat<IT, DT>& A)
+{
+    dCSR<DT> A_dcsr;
+
+    A_dcsr.rows = A.get_m();
+    A_dcsr.cols= A.get_n();
+    A_dcsr.nnz = A.get_nnz();
+    A_dcsr.data = A.get_vals();
+    A_dcsr.col_ids = A.get_colinds();
+    A_dcsr.row_offsets = A.get_rowptrs();
+    
+    return A_dcsr;
 }
 
 

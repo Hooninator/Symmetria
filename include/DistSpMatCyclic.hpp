@@ -60,7 +60,13 @@ public:
             }
         );
 
+        set_from_coo(tile_triples);
 
+    }
+
+
+    void set_from_coo(std::vector<CooTriples<IT, DT>>& tile_triples)
+    {
         DEBUG_PRINT("Making local size arrays");
 
         auto const& tile_inds = this->proc_map->get_my_tile_inds();
@@ -79,6 +85,8 @@ public:
                                                 mb + row_edge_size(i));
         }
 
+
+
         DEBUG_PRINT("Allreducing");
         MPI_Allreduce(MPI_IN_PLACE, 
                       tile_nnz.data(), tile_nnz.size(), 
@@ -93,14 +101,23 @@ public:
                       MPIType<IT>(), MPI_SUM, 
                       this->proc_map->get_world_comm());
 
+#ifdef DEBUG
+        //logptr->log_vec(tile_nnz, "tile nnz");
+        //logptr->log_vec(tile_rows, "tile rows");
+        //logptr->log_vec(tile_cols, "tile cols");
+        //logptr->log_vec(tile_inds, "tile inds");
+#endif
+
+
         DEBUG_PRINT("Making tile window");
         this->tile_window = std::make_shared<TileWindow<IT, DT>>(window_size);
+
+        DEBUG_PRINT("Placing tiles");
         place_tiles(tile_triples);
 
         DEBUG_PRINT("Done");
 
     }
-
 
     void place_tiles(std::vector<CooTriples<IT, DT>>& tile_triples)
     {
@@ -136,7 +153,7 @@ public:
         uint64_t landing_zone_size = aligned_tile_size(tile_nnz[i*ntiles + j], tile_rows[i*ntiles + j]);
 
         /* Remote tile is empty */
-        if (landing_zone_size==0)
+        if (tile_nnz[i*ntiles + j]==0)
         {
             return SpMat<IT, DT>();
         }
@@ -150,6 +167,9 @@ public:
 
         /* Use NVSHMEM to fetch the tile */
         tile_window->get_tile_sync(d_landing_zone, offset, landing_zone_size, target_pe);
+
+        /* Unregister landing zone */
+        NVSHMEM_CHECK(nvshmemx_buffer_unregister(d_landing_zone));
 
         /* Make the SpMat from the landing zone */
         return SpMat<IT, DT>(tile_rows[i*ntiles + j], tile_cols[i*ntiles + j], tile_nnz[i*ntiles + j],
@@ -198,6 +218,9 @@ public:
     inline IT get_cols() {return n;}
     inline IT get_nnz() {return nnz;}
 
+    inline IT get_mb() {return mb;}
+    inline IT get_nb() {return nb;}
+
     inline IT get_mtiles() {return mtiles;}
     inline IT get_ntiles() {return ntiles;}
 
@@ -238,6 +261,7 @@ public:
         DistSpMatCyclic<IT, DT, P>(m, n, nnz, mb, nb, proc_map)
     {
         this->n_local_tiles = (this->mtiles / this->proc_map->get_px()) * (this->ntiles / this->proc_map->get_py());
+        MPI_Barrier(proc_map->get_world_comm());
     }
 
 

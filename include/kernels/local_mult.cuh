@@ -96,6 +96,23 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
 }
 
 
+template <typename SR, typename IT, typename DT>
+std::tuple<IT, IT, DT> * local_spgemm_galatic(SpMat<IT, DT>& A, SpMat<IT, DT>& B, 
+                                                IT& nnz,IT offset = 0)
+{
+    auto A_dcsr = make_dCSR_from_spmat(A);
+    auto B_dcsr = make_dCSR_from_spmat(B);
+
+    /* This is horrible, but no other option for now */
+    auto B_t_dcsr = transpose_outofplace<DT>(B_dcsr);
+    auto d_triples = local_spgemm_galatic<SR>(A_dcsr, B_t_dcsr, nnz, offset);
+
+    clear_dCSR_ptrs(A_dcsr);
+    clear_dCSR_ptrs(B_dcsr);
+
+    return d_triples;
+}
+
 
 }
 

@@ -37,6 +37,13 @@ __global__ void transpose_kernel(const DT * d_vals, const IT * d_colinds, const 
 }
 
 
+/* Inplace transpose of CSR matrix. */
+template <typename T>
+void transpose_inplace(dCSR<T>& A)
+{
+    //TODO
+}
+
 /* Out of place transpose of CSR matrix. Returns transposed matrix, input matrix is unaffected.*/
 template <typename T>
 dCSR<T> transpose_outofplace(const dCSR<T>& A)
@@ -57,6 +64,7 @@ dCSR<T> transpose_outofplace(const dCSR<T>& A)
     const uint32_t tpb = 512;
     const uint32_t wpb = tpb / warp_size;
     const uint32_t blocks = std::ceil( A.rows / static_cast<double>(wpb));
+    std::cout<<blocks<<","<<tpb<<std::endl;
     transpose_kernel<<<blocks, tpb>>>(A.data, A.col_ids, A.row_offsets,
                                        A_t.data, A_t.col_ids, A_t.row_offsets, 
                                        d_offsets,

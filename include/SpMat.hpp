@@ -25,7 +25,8 @@ class SpMat
 
 public:
 
-    SpMat() {}
+    SpMat(): m(0), n(0), nnz(0), total_bytes(0), baseptr(nullptr),
+            ds_vals(nullptr), ds_colinds(nullptr), ds_rowptrs(nullptr){}
 
     SpMat(const IT m, const IT n, CooTriples<IT, DT>& triples,
             char * baseptr):
@@ -50,7 +51,8 @@ public:
     }
 
 
-    SpMat(const IT m, const IT n, const IT nnz, char * d_buffer)
+    SpMat(const IT m, const IT n, const IT nnz, char * d_buffer):
+        m(m), n(n), nnz(nnz), baseptr(d_buffer)
     {
         assert(nnz>0);
         assert(sizeof(DT) >= sizeof(IT)); //otherwise alignment doesn't work
@@ -100,10 +102,27 @@ public:
     }
 
 
+    void dump_to_log(Log * logfile, const char * prefix)
+    {
+        logfile->OFS()<<prefix<<std::endl;
+
+        logfile->OFS()<<"nnz: "<<this->nnz<<", m: "<<this->m<<", n: "<<this->n<<std::endl;
+
+        logfile->log_device_array(this->ds_vals , this->nnz, "Values:");
+        logfile->log_device_array(this->ds_colinds, this->nnz, "Colinds:");
+        logfile->log_device_array(this->ds_rowptrs, this->m+1, "Rowptrs:");
+
+    }
+
+
     inline IT get_m() {return m;}
     inline IT get_n() {return n;}
     inline IT get_nnz() {return nnz;}
     inline uint64_t get_total_bytes() {return total_bytes;}
+
+    inline DT * get_vals() {return ds_vals;}
+    inline IT * get_colinds() {return ds_colinds;}
+    inline IT * get_rowptrs() {return ds_rowptrs;}
 
     void free()
     {
