@@ -5,6 +5,7 @@
 #include "SpMat.hpp"
 
 #include "dCSR.cuh"
+#include "CSR.cuh"
 #include "SemiRingInterface.h"
 #include "../source/device/Multiply.cuh"
 
@@ -63,7 +64,7 @@ dCSR<T> make_dCSR_from_distspmat_outofplace(Mat& A_dist)
 
 
 template <typename DT, typename IT>
-dCSR<DT> make_dCSR_from_spmat(SpMat<IT, DT>& A)
+dCSR<DT> make_dCSR_from_spmat(const SpMat<IT, DT>& A)
 {
     dCSR<DT> A_dcsr;
 
@@ -79,7 +80,7 @@ dCSR<DT> make_dCSR_from_spmat(SpMat<IT, DT>& A)
 
 
 template <typename DT, typename IT>
-dCSR<DT> make_dCSR_from_spmat_outofplace(SpMat<IT, DT>& A)
+dCSR<DT> make_dCSR_from_spmat_outofplace(const SpMat<IT, DT>& A)
 {
     dCSR<DT> A_dcsr;
     A_dcsr.alloc(A.get_m(), A.get_n(), A.get_nnz());
@@ -103,9 +104,20 @@ dCSR<DT> make_dCSR_from_spmat_outofplace(SpMat<IT, DT>& A)
 template <typename T>
 void dump_dCSR_to_log(Log * logfile, const dCSR<T>& A)
 {
-    logfile->log_device_array(A.data, A.nnz, "Values:");
-    logfile->log_device_array(A.col_ids, A.nnz, "Colinds:");
-    logfile->log_device_array(A.row_offsets, A.rows+1, "Rowptrs:");
+    logfile->OFS()<<"nnz: "<<A.nnz<<", m: "<<A.rows<<", n: "<<A.cols<<std::endl;
+
+    if (A.nnz==0) return;
+
+    std::vector<T> h_vals(A.nnz);
+    std::vector<unsigned int> h_colinds(A.nnz);
+    std::vector<unsigned int> h_rowptrs(A.rows + 1);
+
+    CUDA_CHECK(cudaMemcpy(h_vals.data(), A.data, sizeof(T)*A.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_colinds.data(), A.col_ids, sizeof(unsigned int)*A.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_rowptrs.data(), A.row_offsets, sizeof(unsigned int)*(A.rows + 1), cudaMemcpyDeviceToHost));
+
+    CooTriples<unsigned int, T> triples(&h_vals, &h_colinds, &h_rowptrs);
+    triples.dump_to_log(logptr);
 }
 
 
@@ -126,16 +138,17 @@ bool operator==(const dCSR<T>& lhs, const dCSR<T>& rhs)
 
     /* Make sure nonzeros are close */
 
-    thrust::device_ptr<T> lhs_vals = thrust::device_pointer_cast(lhs.data);
-    thrust::device_ptr<T> rhs_vals = thrust::device_pointer_cast(rhs.data);
+    CSR<T> h_lhs, h_rhs;
+    convert(h_lhs, lhs);
+    convert(h_rhs, rhs);
 
-    thrust::device_vector<T> temp(lhs.nnz);
-
-    thrust::transform(lhs_vals, lhs_vals + lhs.nnz, rhs_vals, temp.begin(), thrust::minus<T>());
-    T err = thrust::transform_reduce(temp.begin(), temp.end(), thrust::square<T>(), 0.0, thrust::plus<T>());
-
-    return err < eps; 
-
+    for (int i=0; i<rhs.nnz; i++)
+    {
+        if (fabs(h_lhs.data[i] - h_rhs.data[i]) > eps)
+            return false;
+    }
+    
+    return true;
 }
     
 

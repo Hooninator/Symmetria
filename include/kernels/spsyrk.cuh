@@ -73,10 +73,12 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         /* Allocate space for broadcast tiles */
         if (k==rank) {
             A_recv = A_t_loc;
+
 #ifdef DEBUG_LOG
             logptr->OFS()<<"Sending round "<<k<<std::endl;
             dump_dCSR_to_log(logptr, A_recv);
 #endif
+
         } else {
             A_recv.alloc(A.get_loc_cols(), A.get_loc_rows(), A.get_tile_sizes()[k]);
         }
@@ -218,9 +220,8 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         /* To store output tuples prior to merging */
         std::vector<std::tuple<IT, IT, DT>*> C_products;
         std::vector<IT> C_nnz_arr;
-        
 
-        if (i < j) continue; //Skip if in strictly upper triangular region
+        if (j < i) continue; //Skip if in strictly upper triangular region
 
         for (int k=0; k<proc_map->get_ntiles(); k++)
         {
@@ -237,16 +238,21 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             }
 
 #ifdef DEBUG
-            //A_tile.dump_to_log(logptr, "A_tile");
-            //B_tile.dump_to_log(logptr, "B_tile");
+            A_tile.dump_to_log(logptr, "A_tile");
+            B_tile.dump_to_log(logptr, "B_tile");
 #endif
 
             IT my_nnz = 0;
             auto C_tuples = local_spgemm_galatic<SR>(A_tile, B_tile, my_nnz);
             CUDA_CHECK(cudaDeviceSynchronize());
 
+#ifdef DEBUG
+            logptr->OFS()<<"My nnz: "<<my_nnz<<std::endl;
+#endif
+
             C_nnz_arr.push_back(my_nnz);
 
+            /* TODO: If i==j only copy lower triangle */
             std::tuple<IT, IT, DT> * C_to_add = new std::tuple<IT, IT, DT>[my_nnz];
             CUDA_CHECK(cudaMemcpy(C_to_add, C_tuples, sizeof(std::tuple<IT, IT, DT>)*my_nnz, 
                                     cudaMemcpyDeviceToHost));
@@ -255,12 +261,14 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             A_tile.free();
             B_tile.free();
             CUDA_FREE_SAFE(C_tuples);
-
         }
 
         auto C_tile = merge_hash_combblas<SR>(C_products, C_nnz_arr.data(), A.get_mb(), A.get_mb());
         total_nnz += C_tile.get_nnz();
 
+#ifdef DEBUG
+        C_tile.dump_to_log(logptr, "C tile post merge");
+#endif
 
         ///* TODO: add a copy constructor to CooTriples and change this to emplace_back */
         C_tiles[tile_id] = C_tile;
@@ -272,18 +280,25 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, proc_map->get_world_comm());
     DEBUG_PRINT("Total nnz: " + STR(total_nnz));
 
-    nvshmem_barrier_all();
 
 #ifdef DEBUG
-    logptr->OFS()<<"C tiles"<<std::endl;
-    std::for_each(C_tiles.begin(), C_tiles.end(), 
-            [&](auto& C_tile) {C_tile.dump_to_log(logptr);});
+    //logptr->OFS()<<"C tiles"<<std::endl;
+    //std::for_each(C_tiles.begin(), C_tiles.end(), 
+    //        [&](auto& C_tile) {C_tile.dump_to_log(logptr);});
 #endif
 
     DistSpMatCyclic2D<IT, DT, P> C(A.get_rows(), A.get_rows(), total_nnz, A.get_mb(), A.get_mb(), proc_map);
+
+#ifdef DEBUG
+    logptr->OFS()<<"C COMPUTED"<<std::endl;
+#endif
+
     C.set_from_coo(C_tiles);
 
+    //TODO: Barrier for mpi and nvshmem
     MPI_Barrier(proc_map->get_world_comm());
+    nvshmem_barrier_all();
+
     DEBUG_PRINT("DONE");
 
     return C;

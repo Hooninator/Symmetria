@@ -11,6 +11,8 @@
 
 #include "transpose_csr.cuh"
 
+#include <thrust/count.h>
+#include <thrust/copy.h>
 
 namespace symmetria {
 
@@ -72,14 +74,16 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
         CSR<DT> h_A;
         CSR<DT> h_A_t;
         CSR<DT> h_C_csr;
+        h_A.alloc(A.rows, A.cols, A.nnz);
+        h_A_t.alloc(A_t.rows, A_t.cols, A_t.nnz);
 
         convert(h_A, A);
         convert(h_A_t, A_t);
-        CUDA_CHECK(cudaDeviceSynchronize());
 
         Mult_CPU<SR>(h_A, h_A_t, h_C_csr, semiring);
 
         convert(C, h_C_csr);
+        CUDA_CHECK(cudaDeviceSynchronize());
     }
     else
     {
@@ -111,6 +115,10 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
 
     nnz = C.nnz;
 
+#ifdef DEBUG
+    dump_dCSR_to_log(logptr, C);
+#endif
+
     /* Convert to device triples */
     Triple * d_triples;
     CUDA_CHECK(cudaMalloc(&d_triples, sizeof(Triple)*nnz));
@@ -127,7 +135,7 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
 
 template <typename SR, typename IT, typename DT>
 std::tuple<IT, IT, DT> * local_spgemm_galatic(SpMat<IT, DT>& A, SpMat<IT, DT>& B, 
-                                                IT& nnz,IT offset = 0)
+                                                IT& nnz, IT offset = 0)
 {
     auto A_dcsr = make_dCSR_from_spmat(A);
     auto B_dcsr = make_dCSR_from_spmat(B);
@@ -141,6 +149,33 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(SpMat<IT, DT>& A, SpMat<IT, DT>& B
 
     return d_triples;
 }
+
+template <typename IT, typename DT>
+struct is_lower_triangular
+{
+    __host__ __device__
+    bool operator()(std::tuple<IT, IT, DT> t)
+    {
+        //return std::get<0>(t) > std::get<1>(t);
+        return false;
+    }
+};
+
+template <typename IT, typename DT>
+std::tuple<IT, IT, DT> * copy_lower_triangular(std::tuple<IT, IT, DT> * d_triples, const IT n)
+{
+    thrust::device_ptr<std::tuple<IT, IT, DT>> d_triples_ptr = thrust::device_pointer_cast(d_triples);
+
+    IT nnz_lower = static_cast<IT>(thrust::count_if(d_triples_ptr, d_triples_ptr + n, is_lower_triangular<IT, DT>()));
+
+    thrust::host_vector<std::tuple<IT, IT, DT>> h_triples(nnz_lower);
+
+    thrust::copy_if(d_triples_ptr, d_triples_ptr + n, h_triples.begin(), is_lower_triangular<IT, DT>());
+
+    return thrust::raw_pointer_cast(h_triples.data());
+
+}
+
 
 
 }

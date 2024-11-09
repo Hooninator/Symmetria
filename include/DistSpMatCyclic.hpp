@@ -44,7 +44,7 @@ public:
     virtual Triple map_glob_to_tile(const Triple& t) {assert(false);}
 
 
-    void set_from_coo(CooTriples<IT, DT> * triples)
+    void set_from_coo(CooTriples<IT, DT> * triples, bool triangular=false)
     {
 
         /* Map each triple to the tile that owns it */
@@ -56,6 +56,8 @@ public:
             [&](auto& t)
             {
                 int target_tile = this->tile_owner(t);
+                if (triangular && proc_map->is_upper_triangular(target_tile))
+                    return;
                 tile_triples[target_tile].add_triple(this->map_glob_to_tile(t));
             }
         );
@@ -263,33 +265,26 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
 
     for (int i=0; i<t; i++)
     {
-        auto lhs_tile = lhs_tiles[i];
-        auto rhs_tile = rhs_tiles[i];
+        nvshmem_barrier_all();
 
-        DEBUG_PRINT(lhs_tile.get_nnz());
-        DEBUG_PRINT(rhs_tile.get_nnz());
+        auto const& lhs_tile = lhs_tiles[i];
+        auto const& rhs_tile = rhs_tiles[i];
 
-        //assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
+        assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
 
         if (lhs_tile.get_nnz()==0 || rhs_tile.get_nnz()==0) continue;
 
-        auto  A_lhs = make_dCSR_from_spmat_outofplace<DT>(lhs_tile);
-        auto  A_rhs = make_dCSR_from_spmat_outofplace<DT>(rhs_tile);
-
-#ifdef DEBUG
-        dump_dCSR_to_log<DT>(logptr, A_lhs);
-        dump_dCSR_to_log<DT>(logptr, A_rhs);
-#endif
-
-        bool equals = A_lhs == A_rhs;
+        bool equals = (lhs_tile == rhs_tile);
 
         correct = correct && equals;
 
     }
 
-    MPI_Allreduce(MPI_IN_PLACE, &correct, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+    int correct_int = correct ? 1 : 0;
 
-    return correct;
+    MPI_Allreduce(MPI_IN_PLACE, &correct_int, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+
+    return true ? (correct_int) : false;
 }
 
 

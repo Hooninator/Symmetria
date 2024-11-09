@@ -131,7 +131,7 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
 
 
 template <typename IT, typename DT, typename Mat>
-void read_mm(const char * path, Mat& A)
+void read_mm(const char * path, Mat& A, bool triangular=false)
 {
     using CooTripleVec = std::vector<std::tuple<IT, IT, DT>>;
 
@@ -226,7 +226,7 @@ void read_mm(const char * path, Mat& A)
 
     /* Set local csr arrays */
     DEBUG_PRINT("Setting from coo");
-    A.set_from_coo(local_tuples);
+    A.set_from_coo(local_tuples, triangular);
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_File_close(&file_handle);

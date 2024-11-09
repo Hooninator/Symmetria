@@ -172,16 +172,42 @@ public:
                     my_tile_inds.push_back({i, j});
             }
         }
+
+        n_local_tiles = my_tile_inds.size();
     }
+
+
+    std::pair<int, int> get_global_tile_inds(const int tile_id)
+    {
+        int row_id = 0;
+        int col_id = 0;
+
+        int tile_id_row = tile_id % ((int)(std::sqrt(n_local_tiles)));
+        int tile_id_col = tile_id / ((int)(std::sqrt(n_local_tiles)));
+
+        row_id = (row_rank) + (tile_id_row * py);
+        col_id = (col_rank) + (tile_id_col * px);
+
+        return {row_id, col_id};
+    }
+
+
+    bool is_upper_triangular(const int tile_id)
+    {
+        auto const& inds = get_global_tile_inds(tile_id);
+        return (inds.first < inds.second);
+    }
+
 
     inline int get_mtiles() {return mtiles;}
     inline int get_ntiles() {return ntiles;}
+    inline int get_n_local_tiles() {return n_local_tiles;}
 
     inline std::vector<std::vector<int>> get_tile_owners() {return tile_owners;}
     inline std::vector<std::pair<int, int>> get_my_tile_inds() {return my_tile_inds;}
 
 private:
-    int mtiles, ntiles;
+    int mtiles, ntiles, n_local_tiles;
     std::vector<std::vector<int>> tile_owners;
     std::vector<std::pair<int, int>> my_tile_inds;
 

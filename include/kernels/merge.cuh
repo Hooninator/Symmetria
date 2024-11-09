@@ -34,12 +34,22 @@ std::string to_str(const std::tuple<IT, IT, DT> t1)
 template <typename SR, typename IT, typename DT>
 CooTriples<IT, DT> merge_hash_combblas(std::vector<std::tuple<IT, IT, DT> *> to_merge, const IT * nnz_arr, const IT rows, const IT cols)
 {
+#ifdef DEBUG
+    logptr->OFS()<<"MERGING TUPLES"<<std::endl;
+#endif
+
+    if (to_merge.size()==0)
+    {
+        return CooTriples<IT, DT>();
+    }
+
+
     std::vector<SpTuples<IT, DT>*> sp_tuples_vec;
     sp_tuples_vec.reserve(to_merge.size());
 
     for (int i=0; i<to_merge.size(); i++)
     {
-#ifdef DEBUG_
+#ifdef DEBUG
         for (int j=0; j<nnz_arr[i]; j++)
         {
             logptr->OFS()<<to_str(to_merge[i][j])<<std::endl;
@@ -50,7 +60,12 @@ CooTriples<IT, DT> merge_hash_combblas(std::vector<std::tuple<IT, IT, DT> *> to_
         sp_tuples_vec.push_back(sptuples);
     }
     
-    auto merged_sptuples = MultiwayMergeHash<SR>(sp_tuples_vec, rows, cols, true, true);
+    auto merged_sptuples = MultiwayMerge<SR>(sp_tuples_vec, rows, cols, true);
+
+#ifdef DEBUG
+    logptr->OFS()<<"DONE MERGING TUPLES"<<std::endl;
+    logptr->OFS()<<std::endl;
+#endif
 
     return CooTriples(merged_sptuples->tuples, merged_sptuples->getnnz());
 }

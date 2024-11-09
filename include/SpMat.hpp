@@ -108,21 +108,32 @@ public:
 
         logfile->OFS()<<"nnz: "<<this->nnz<<", m: "<<this->m<<", n: "<<this->n<<std::endl;
 
-        logfile->log_device_array(this->ds_vals , this->nnz, "Values:");
-        logfile->log_device_array(this->ds_colinds, this->nnz, "Colinds:");
-        logfile->log_device_array(this->ds_rowptrs, this->m+1, "Rowptrs:");
+        if (nnz==0) return;
 
+        std::vector<DT> h_vals(this->nnz);
+        std::vector<IT> h_colinds(this->nnz);
+        std::vector<IT> h_rowptrs(this->m + 1);
+
+        CUDA_CHECK(cudaMemcpy(h_vals.data(), ds_vals, sizeof(DT)*this->nnz, cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_colinds.data(), ds_colinds, sizeof(IT)*this->nnz, cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_rowptrs.data(), ds_rowptrs, sizeof(IT)*(this->m + 1), cudaMemcpyDeviceToHost));
+
+        CooTriples<IT, DT> triples(&h_vals, &h_colinds, &h_rowptrs);
+        triples.dump_to_log(logptr);
     }
 
 
-    inline IT get_m() {return m;}
-    inline IT get_n() {return n;}
-    inline IT get_nnz() {return nnz;}
+    inline IT get_m() const {return m;}
+    inline IT get_n() const {return n;}
+    inline IT get_nnz() const {return nnz;}
     inline uint64_t get_total_bytes() {return total_bytes;}
 
-    inline DT * get_vals() {return ds_vals;}
-    inline IT * get_colinds() {return ds_colinds;}
-    inline IT * get_rowptrs() {return ds_rowptrs;}
+    inline DT * get_vals() const {return ds_vals;}
+    inline IT * get_colinds() const {return ds_colinds;}
+    inline IT * get_rowptrs() const {return ds_rowptrs;}
+
+    template< typename IT2, typename DT2>
+    friend bool operator==(const SpMat<IT2, DT2>& lhs, const SpMat<IT2, DT2>& rhs);
 
     void free()
     {
@@ -142,6 +153,44 @@ private:
     char * baseptr;
     uint64_t total_bytes;
 };
+
+
+template <typename IT, typename DT>
+bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
+{
+    double eps = 1e-3;
+
+    /* Dimensions and nnz */
+    if (lhs.nnz != rhs.nnz ||
+        lhs.m!= rhs.m||
+        lhs.m!= rhs.m) {
+        return false;
+    }
+
+
+    DT * h_lhs = new DT[lhs.nnz];
+    DT * h_rhs = new DT[rhs.nnz];
+
+    CUDA_CHECK(cudaMemcpy(h_lhs, lhs.ds_vals, sizeof(DT)*lhs.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_rhs, rhs.ds_vals, sizeof(DT)*rhs.nnz, cudaMemcpyDeviceToHost));
+
+    bool correct = true;
+
+    /* Make sure nonzeros are close */
+    for (int i=0; i<rhs.nnz; i++)
+    {
+        if (fabs(h_lhs[i] - h_rhs[i]) > eps)
+            correct = false;
+    }
+
+    delete[] h_lhs;
+    delete[] h_rhs;
+    
+    return correct;
+}
+
+
+
 
 }
 

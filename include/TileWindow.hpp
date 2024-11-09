@@ -29,6 +29,10 @@ public:
     {
         local_matrices.emplace_back(m, n, triples, ds_buffer + tip_offset);
 
+#ifdef DEBUG
+        (local_matrices.end()-1)->dump_to_log(logptr, "Tile");
+#endif
+
         uint64_t result = tip_offset;
         tip_offset += (local_matrices.end()-1)->get_total_bytes();
         assert(tip_offset <= window_size);

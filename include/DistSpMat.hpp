@@ -30,7 +30,7 @@ public:
     }
 
 
-    void set_from_coo(CooTriples<IT, DT>* triples)
+    void set_from_coo(CooTriples<IT, DT>* triples, bool triangular=false)
     {
 
         assert(this->m > 0 && this->loc_m > 0);
@@ -240,14 +240,22 @@ bool operator==(DistSpMat<IT, DT>& lhs, DistSpMat<IT, DT>& rhs)
     auto A_lhs = make_dCSR_from_distspmat<DT>(lhs);
     auto A_rhs = make_dCSR_from_distspmat<DT>(rhs);
 
-    bool equals = A_lhs == A_rhs;
+#ifdef DEBUG
+    logptr->OFS()<<"CORRECT"<<std::endl;
+    dump_dCSR_to_log(logptr, A_lhs);
+    logptr->OFS()<<"COMPUTED"<<std::endl;
+    dump_dCSR_to_log(logptr, A_rhs);
+#endif
 
-    MPI_Allreduce(MPI_IN_PLACE, &equals, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+    bool equals = (A_lhs == A_rhs);
+    int equals_int = equals ? 1 : 0;
+
+    MPI_Allreduce(MPI_IN_PLACE, &equals_int, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
 
     clear_dCSR_ptrs(A_lhs);
     clear_dCSR_ptrs(A_rhs);
 
-    return equals;
+    return true ? (equals_int==1) : false;
 }
 
 

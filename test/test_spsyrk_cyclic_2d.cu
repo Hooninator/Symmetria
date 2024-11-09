@@ -7,7 +7,7 @@
 
 #include "TestDriver.hpp"
 
-//#define DEBUG_TEST
+#define DEBUG
 #define EPS 0.001
 
 using namespace symmetria;
@@ -26,8 +26,8 @@ public:
         const uint32_t m = test.rows;
         const uint32_t n = test.cols;
         const uint32_t nnz = test.nnz;
-        const uint32_t mb = 500;
-        const uint32_t nb = 500;
+        const uint32_t mb = (m) / (1*(int)sqrt(n_pes));
+        const uint32_t nb = (n) / (1*(int)sqrt(n_pes));
         const uint32_t mtiles = std::ceil( (float)m / (float)mb );
         const uint32_t ntiles = std::ceil( (float)n / (float)nb );
 
@@ -55,8 +55,11 @@ public:
         TEST_PRINT("Done with SpSYRK");
 
         /* Correctness check */
+#ifdef DEBUG
+        logptr->OFS()<<"C Correct"<<std::endl;
+#endif
         DistSpMatCyclic2D<IT, DT, ProcMapCyclic2D> C_correct(m, m, C.get_nnz(), mb, mb, proc_map);
-        symmetria::io::read_mm<IT, DT>(product_path.c_str(), C_correct);
+        symmetria::io::read_mm<IT, DT>(product_path.c_str(), C_correct, true);
         TEST_PRINT("Done reading in correct");
 
         TEST_CHECK(C_correct == C);

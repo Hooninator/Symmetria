@@ -45,9 +45,11 @@ public:
 
         /* Correctness check */
         DistSpMat1DBlockRow<IT, DT> C_correct(m, m, C_computed.get_nnz(), proc_map);
-        symmetria::io::read_mm<IT, DT>(product_path.c_str(), C_correct);
+        symmetria::io::read_mm<IT, DT>(product_path.c_str(), C_correct, true);
 
-        TEST_CHECK(C_correct == C_computed);
+        bool correct = (C_correct == C_computed);
+
+        TEST_CHECK(correct);
 
         return true;
     };

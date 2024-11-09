@@ -25,7 +25,7 @@
 #include <cusparse_v2.h>
 
 #include "utils/Timer.hpp"
-#include "utils/Log.hpp"
+#include "utils/Log.cuh"
 #include "utils/colors.h"
 #include "utils/MPITypes.h"
 #include "utils/alignment.h"
