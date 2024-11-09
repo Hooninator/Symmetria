@@ -4,6 +4,8 @@
 #include "../common.h"
 #include "../dCSR_utils.cuh"
 #include "dCSR.cuh"
+#include "CSR.cuh"
+#include "CPU_SpGEMM.h"
 #include "SemiRingInterface.h"
 #include "../source/device/Multiply.cuh"
 
@@ -55,31 +57,58 @@ template <typename SR, typename IT, typename DT>
 std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t, 
                                                 IT& nnz,IT offset = 0)
 {
+    assert((A.nnz > 0) && (A_t.nnz > 0));
 
     using Triple = std::tuple<IT, IT, DT>;
 
-    //Note: I don't know what any of this is
-    const int Threads = 128;
-    const int BlocksPerMP = 1;
-    const int NNZPerThread = 2;
-    const int InputElementsPerThreads = 2;
-    const int RetainElementsPerThreads = 1;
-    const int MaxChunksToMerge = 16;
-    const int MaxChunksGeneralizedMerge = 256; // MAX: 865
-    const int MergePathOptions = 8;
-    
-    
-    GPUMatrixMatrixMultiplyTraits DefaultTraits(Threads, BlocksPerMP, NNZPerThread,
-                                                 InputElementsPerThreads, RetainElementsPerThreads,
-                                                 MaxChunksToMerge, MaxChunksGeneralizedMerge, 
-                                                 MergePathOptions );
-    ExecutionStats stats; //TODO: Do I have to have this
+
     dCSR<DT> C;
     SR semiring;
 
-    /* Do multiply */
-    ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, true, semiring);
-    CUDA_CHECK(cudaDeviceSynchronize());
+    const IT m_threshold = 100; //GALATIC explodes if matrices are small
+    if (A.rows < m_threshold || A_t.rows < m_threshold)
+    {
+        //CPU multiply for now
+        CSR<DT> h_A;
+        CSR<DT> h_A_t;
+        CSR<DT> h_C_csr;
+
+        convert(h_A, A);
+        convert(h_A_t, A_t);
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        Mult_CPU<SR>(h_A, h_A_t, h_C_csr, semiring);
+
+        convert(C, h_C_csr);
+    }
+    else
+    {
+        // GPU multiply
+
+        //Note: I don't know what any of this is
+        const int Threads = 128;
+        const int BlocksPerMP = 1;
+        const int NNZPerThread = 2;
+        const int InputElementsPerThreads = 2;
+        const int RetainElementsPerThreads = 1;
+        const int MaxChunksToMerge = 16;
+        const int MaxChunksGeneralizedMerge = 256; // MAX: 865
+        const int MergePathOptions = 8;
+        
+        
+        GPUMatrixMatrixMultiplyTraits DefaultTraits(Threads, BlocksPerMP, NNZPerThread,
+                                                     InputElementsPerThreads, RetainElementsPerThreads,
+                                                     MaxChunksToMerge, MaxChunksGeneralizedMerge, 
+                                                     MergePathOptions );
+        ExecutionStats stats; //TODO: Do I have to have this
+
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        /* Do multiply */
+        ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, true, semiring);
+        CUDA_CHECK(cudaDeviceSynchronize());
+    }
+
     nnz = C.nnz;
 
     /* Convert to device triples */

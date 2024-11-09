@@ -229,7 +229,6 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             SpMat<IT, DT> A_tile = A.get_tile_sync(i, k);
             SpMat<IT, DT> B_tile = A.get_tile_sync(j, k);
 
-
             if (A_tile.get_nnz()==0 || B_tile.get_nnz()==0)
             {
                 A_tile.free();

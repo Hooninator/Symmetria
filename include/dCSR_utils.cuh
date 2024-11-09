@@ -78,8 +78,30 @@ dCSR<DT> make_dCSR_from_spmat(SpMat<IT, DT>& A)
 }
 
 
+template <typename DT, typename IT>
+dCSR<DT> make_dCSR_from_spmat_outofplace(SpMat<IT, DT>& A)
+{
+    dCSR<DT> A_dcsr;
+    A_dcsr.alloc(A.get_m(), A.get_n(), A.get_nnz());
+
+    A_dcsr.data = A.get_vals();
+    A_dcsr.col_ids = A.get_colinds();
+    A_dcsr.row_offsets = A.get_rowptrs();
+
+    CUDA_CHECK(cudaMemcpy(A_dcsr.data, A.get_vals(), sizeof(DT) * A.get_nnz(),
+                            cudaMemcpyDeviceToDevice));
+    CUDA_CHECK(cudaMemcpy(A_dcsr.col_ids, A.get_colinds(), sizeof(IT) * A.get_nnz(),
+                            cudaMemcpyDeviceToDevice));
+    CUDA_CHECK(cudaMemcpy(A_dcsr.row_offsets, A.get_rowptrs(), sizeof(IT) * (A.get_m() + 1),
+                            cudaMemcpyDeviceToDevice));
+    
+    return A_dcsr;
+}
+
+
+
 template <typename T>
-void dump_dCSR_to_log(Log * logfile, dCSR<T>& A)
+void dump_dCSR_to_log(Log * logfile, const dCSR<T>& A)
 {
     logfile->log_device_array(A.data, A.nnz, "Values:");
     logfile->log_device_array(A.col_ids, A.nnz, "Colinds:");

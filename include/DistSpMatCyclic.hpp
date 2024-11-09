@@ -249,6 +249,51 @@ protected:
 
 
 template <typename IT, typename DT, typename P>
+bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs) 
+{
+    auto const& lhs_tiles = lhs.get_tile_window()->get_local_matrices();
+    auto const& rhs_tiles = rhs.get_tile_window()->get_local_matrices();
+
+    assert (lhs_tiles.size() == rhs_tiles.size());
+    int t = lhs_tiles.size();
+
+    bool correct = true;
+
+    MPI_Barrier(lhs.proc_map->get_world_comm());
+
+    for (int i=0; i<t; i++)
+    {
+        auto lhs_tile = lhs_tiles[i];
+        auto rhs_tile = rhs_tiles[i];
+
+        DEBUG_PRINT(lhs_tile.get_nnz());
+        DEBUG_PRINT(rhs_tile.get_nnz());
+
+        //assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
+
+        if (lhs_tile.get_nnz()==0 || rhs_tile.get_nnz()==0) continue;
+
+        auto  A_lhs = make_dCSR_from_spmat_outofplace<DT>(lhs_tile);
+        auto  A_rhs = make_dCSR_from_spmat_outofplace<DT>(rhs_tile);
+
+#ifdef DEBUG
+        dump_dCSR_to_log<DT>(logptr, A_lhs);
+        dump_dCSR_to_log<DT>(logptr, A_rhs);
+#endif
+
+        bool equals = A_lhs == A_rhs;
+
+        correct = correct && equals;
+
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, &correct, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+
+    return correct;
+}
+
+
+template <typename IT, typename DT, typename P>
 class DistSpMatCyclic2D : public DistSpMatCyclic<IT, DT, P>
 {
 public:

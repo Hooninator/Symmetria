@@ -54,6 +54,14 @@ public:
 
         TEST_PRINT("Done with SpSYRK");
 
+        /* Correctness check */
+        DistSpMatCyclic2D<IT, DT, ProcMapCyclic2D> C_correct(m, m, C.get_nnz(), mb, mb, proc_map);
+        symmetria::io::read_mm<IT, DT>(product_path.c_str(), C_correct);
+        TEST_PRINT("Done reading in correct");
+
+        TEST_CHECK(C_correct == C);
+        TEST_PRINT("Done");
+
         return true;
     };
 };

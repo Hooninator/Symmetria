@@ -44,6 +44,9 @@ public:
     }
 
 
+    inline auto get_local_matrices() {return local_matrices;}
+
+
     ~TileWindow()
     {
         NVSHMEM_FREE_SAFE(ds_buffer);

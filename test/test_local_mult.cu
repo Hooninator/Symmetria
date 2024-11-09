@@ -110,10 +110,13 @@ public:
 
 int main(int argc, char ** argv)
 {
+    int test_id = -1;
+    if (argc > 1)
+        test_id = std::atoi(argv[1]);
 
     symmetria_init();
     {
-        TestDriver<TestLocalMult> manager("../test/test_configs.json", "Local Multiply");
+        TestDriver<TestLocalMult> manager("../test/test_configs.json", "Local Multiply", test_id);
         manager.run_tests();
     }
     symmetria_finalize();
