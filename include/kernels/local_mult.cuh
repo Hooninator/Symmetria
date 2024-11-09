@@ -105,7 +105,7 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
         CUDA_CHECK(cudaDeviceSynchronize());
 
         /* Do multiply */
-        ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, true, semiring);
+        ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, false, semiring);
         CUDA_CHECK(cudaDeviceSynchronize());
     }
 

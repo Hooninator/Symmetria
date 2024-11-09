@@ -64,7 +64,6 @@ dCSR<T> transpose_outofplace(const dCSR<T>& A)
     const uint32_t tpb = 512;
     const uint32_t wpb = tpb / warp_size;
     const uint32_t blocks = std::ceil( A.rows / static_cast<double>(wpb));
-    std::cout<<blocks<<","<<tpb<<std::endl;
     transpose_kernel<<<blocks, tpb>>>(A.data, A.col_ids, A.row_offsets,
                                        A_t.data, A_t.col_ids, A_t.row_offsets, 
                                        d_offsets,
