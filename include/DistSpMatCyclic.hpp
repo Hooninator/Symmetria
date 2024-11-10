@@ -135,11 +135,20 @@ public:
                                             transpose);
             window_offsets[p.first * ntiles + p.second] = offset;
         }
+        
+#ifdef DEBUG
+        logptr->log_vec(window_offsets, "Window offsets preallreduce");
+        logptr->newline();
+#endif
 
         MPI_Allreduce(MPI_IN_PLACE, 
                       window_offsets.data(), window_offsets.size(), 
-                      MPIType<IT>(), MPI_SUM, 
+                      MPIType<uint64_t>(), MPI_SUM, 
                       this->proc_map->get_world_comm());
+#ifdef DEBUG
+        logptr->log_vec(window_offsets, "Window offsets");
+        logptr->newline();
+#endif
     }
 
     
@@ -153,6 +162,12 @@ public:
 
         /* Where does that tile live in target's TileWindow? */
         uint64_t offset = window_offsets[i * ntiles + j];
+
+#ifdef DEBUG
+        logptr->OFS()<<"Target PE: "<<target_pe<<std::endl;
+        logptr->OFS()<<"Offset: "<<offset<<std::endl;
+#endif
+
 
         /* How large is that tile? */
         uint64_t landing_zone_size = aligned_tile_size(tile_nnz[i*ntiles + j], tile_rows[i*ntiles + j]);

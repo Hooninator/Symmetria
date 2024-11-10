@@ -34,6 +34,9 @@ public:
     {
         assert(sizeof(DT) >= sizeof(IT)); //otherwise alignment doesn't work
 
+        if (transpose)
+            std::swap(this->m, this->n);
+
 		size_t offset_colinds = aligned_offset<DT>(nnz * sizeof(DT));  
 		size_t offset_rowptrs = aligned_offset<DT>(offset_colinds + nnz * sizeof(IT)) ;
 
@@ -41,14 +44,14 @@ public:
             total_bytes = 0;
         } else {
 
-            total_bytes = aligned_offset<DT>(offset_rowptrs + (m + 1) * sizeof(IT));
+            total_bytes = aligned_offset<DT>(offset_rowptrs + (m+ 1) * sizeof(IT));
 
             this->ds_vals = (DT*)this->baseptr;
             this->ds_colinds = (IT*)(this->baseptr + offset_colinds);
             this->ds_rowptrs = (IT*)(this->baseptr + offset_rowptrs);
 
             if (transpose) {
-                build_csr<1, 0>(triples, n);
+                build_csr<1, 0>(triples, m);
             } else {
                 build_csr<0, 1>(triples, m);
             }
@@ -125,7 +128,7 @@ public:
         CUDA_CHECK(cudaMemcpy(h_rowptrs.data(), ds_rowptrs, sizeof(IT)*(this->m + 1), cudaMemcpyDeviceToHost));
 
         CooTriples<IT, DT> triples(&h_vals, &h_colinds, &h_rowptrs);
-        triples.dump_to_log(logptr);
+        triples.dump_to_log(logfile);
     }
 
 
@@ -189,8 +192,10 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
     CooTriples<IT, DT> lhs_triples(h_lhs_vals, h_lhs_colinds, h_lhs_rowptrs, lhs.nnz, lhs.m);
     CooTriples<IT, DT> rhs_triples(h_rhs_vals, h_rhs_colinds, h_rhs_rowptrs, rhs.nnz, rhs.m);
 
+#ifdef DEBUG
     lhs_triples.dump_to_log(logptr, "LHS");
     rhs_triples.dump_to_log(logptr, "RHS");
+#endif
 
     bool correct = (lhs_triples == rhs_triples);
 

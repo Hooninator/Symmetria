@@ -217,11 +217,16 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         int i = tile_inds.first;
         int j = tile_inds.second;
 
+#ifdef DEBUG
+        logptr->OFS()<<std::endl; 
+        logptr->OFS()<<"Tile indices: "<<i<<","<<j<<std::endl;; 
+#endif
+
         /* To store output tuples prior to merging */
         std::vector<std::tuple<IT, IT, DT>*> C_products;
         std::vector<IT> C_nnz_arr;
 
-        if (j < i) continue; //Skip if in strictly upper triangular region
+        if (i > j) continue; //Skip if in strictly upper triangular region
 
         for (int k=0; k<proc_map->get_ntiles(); k++)
         {
@@ -230,6 +235,12 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             SpMat<IT, DT> A_tile = A.get_tile_sync(i, k);
             SpMat<IT, DT> B_tile = A.get_tile_sync(j, k);
 
+#ifdef DEBUG
+            A_tile.dump_to_log(logptr, "A_tile");
+            B_tile.dump_to_log(logptr, "B_tile");
+            logptr->newline();
+#endif
+
             if (A_tile.get_nnz()==0 || B_tile.get_nnz()==0)
             {
                 A_tile.free();
@@ -237,10 +248,6 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
                 continue;
             }
 
-#ifdef DEBUG
-            A_tile.dump_to_log(logptr, "A_tile");
-            B_tile.dump_to_log(logptr, "B_tile");
-#endif
 
             IT my_nnz = 0;
             auto C_tuples = local_spgemm_galatic<SR>(A_tile, B_tile, my_nnz);

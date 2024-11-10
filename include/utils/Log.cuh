@@ -74,6 +74,9 @@ public:
         log_vec(h_arr, prefix);
     }
 
+
+    void newline() {ofs<<std::endl;}
+
     
     std::ofstream& OFS() {return ofs;}
 
