@@ -293,7 +293,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
     logptr->OFS()<<"C COMPUTED"<<std::endl;
 #endif
 
-    C.set_from_coo(C_tiles);
+    C.set_from_coo(C_tiles, true);
 
     //TODO: Barrier for mpi and nvshmem
     MPI_Barrier(proc_map->get_world_comm());

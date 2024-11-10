@@ -29,7 +29,7 @@ public:
             ds_vals(nullptr), ds_colinds(nullptr), ds_rowptrs(nullptr){}
 
     SpMat(const IT m, const IT n, CooTriples<IT, DT>& triples,
-            char * baseptr):
+            char * baseptr, const bool transpose):
         m(m), n(n), nnz(triples.get_nnz()), baseptr(baseptr)
     {
         assert(sizeof(DT) >= sizeof(IT)); //otherwise alignment doesn't work
@@ -40,13 +40,19 @@ public:
         if (nnz==0) {
             total_bytes = 0;
         } else {
+
             total_bytes = aligned_offset<DT>(offset_rowptrs + (m + 1) * sizeof(IT));
 
             this->ds_vals = (DT*)this->baseptr;
             this->ds_colinds = (IT*)(this->baseptr + offset_colinds);
             this->ds_rowptrs = (IT*)(this->baseptr + offset_rowptrs);
 
-            build_csr_fast(triples, m);
+            if (transpose) {
+                build_csr<1, 0>(triples, n);
+            } else {
+                build_csr<0, 1>(triples, m);
+            }
+
         }
     }
 
@@ -68,14 +74,14 @@ public:
     }
 
 
-    void build_csr_fast(CooTriples<IT, DT>& triples,
-                        const IT rows)
+    template <int RI, int CI>
+    void build_csr(CooTriples<IT, DT>& triples, const IT rows)
     {
         thrust::host_vector<IT> row_nnz(rows);
         thrust::for_each(triples.begin(), triples.end(),
             [&](auto const& t)mutable
             {
-                row_nnz[std::get<0>(t)]++;
+                row_nnz[std::get<RI>(t)]++;
             }
         );
 
@@ -92,10 +98,10 @@ public:
 
         const uint32_t tpb = 512;
         const uint32_t blocks = std::ceil( static_cast<double>(triples.get_nnz()) / static_cast<double>(tpb) );
-        make_csr<<<blocks, tpb>>>(d_triples,
-                                    thrust::raw_pointer_cast(d_row_nnz.data()),
-                                    this->ds_vals, this->ds_colinds, this->ds_rowptrs,
-                                    triples.get_nnz());
+        make_csr<IT, DT, RI, CI><<<blocks, tpb>>>(d_triples,
+                                        thrust::raw_pointer_cast(d_row_nnz.data()),
+                                        this->ds_vals, this->ds_colinds, this->ds_rowptrs,
+                                        triples.get_nnz());
         CUDA_CHECK(cudaDeviceSynchronize());
 
         CUDA_FREE_SAFE(d_triples);
@@ -155,11 +161,10 @@ private:
 };
 
 
+/* NOTE: This is inefficient */
 template <typename IT, typename DT>
 bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
 {
-    double eps = 1e-3;
-
     /* Dimensions and nnz */
     if (lhs.nnz != rhs.nnz ||
         lhs.m!= rhs.m||
@@ -167,25 +172,35 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
         return false;
     }
 
+    DT * h_lhs_vals = new DT[lhs.nnz];
+    DT * h_rhs_vals = new DT[rhs.nnz];
+    IT * h_lhs_colinds = new IT[lhs.nnz];
+    IT * h_rhs_colinds = new IT[rhs.nnz];
+    IT * h_lhs_rowptrs = new IT[lhs.m + 1];
+    IT * h_rhs_rowptrs = new IT[rhs.m + 1];
 
-    DT * h_lhs = new DT[lhs.nnz];
-    DT * h_rhs = new DT[rhs.nnz];
+    CUDA_CHECK(cudaMemcpy(h_lhs_vals, lhs.ds_vals, sizeof(DT)*lhs.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_rhs_vals, rhs.ds_vals, sizeof(DT)*rhs.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_lhs_colinds, lhs.ds_colinds, sizeof(IT)*lhs.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_rhs_colinds, rhs.ds_colinds, sizeof(IT)*rhs.nnz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_lhs_rowptrs, lhs.ds_rowptrs, sizeof(IT)*(lhs.m+1), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_rhs_rowptrs, rhs.ds_rowptrs, sizeof(IT)*(rhs.m+1), cudaMemcpyDeviceToHost));
 
-    CUDA_CHECK(cudaMemcpy(h_lhs, lhs.ds_vals, sizeof(DT)*lhs.nnz, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(h_rhs, rhs.ds_vals, sizeof(DT)*rhs.nnz, cudaMemcpyDeviceToHost));
+    CooTriples<IT, DT> lhs_triples(h_lhs_vals, h_lhs_colinds, h_lhs_rowptrs, lhs.nnz, lhs.m);
+    CooTriples<IT, DT> rhs_triples(h_rhs_vals, h_rhs_colinds, h_rhs_rowptrs, rhs.nnz, rhs.m);
 
-    bool correct = true;
+    lhs_triples.dump_to_log(logptr, "LHS");
+    rhs_triples.dump_to_log(logptr, "RHS");
 
-    /* Make sure nonzeros are close */
-    for (int i=0; i<rhs.nnz; i++)
-    {
-        if (fabs(h_lhs[i] - h_rhs[i]) > eps)
-            correct = false;
-    }
+    bool correct = (lhs_triples == rhs_triples);
 
-    delete[] h_lhs;
-    delete[] h_rhs;
-    
+    delete[] h_lhs_vals;
+    delete[] h_rhs_vals;
+    delete[] h_lhs_colinds;
+    delete[] h_rhs_colinds;
+    delete[] h_lhs_rowptrs;
+    delete[] h_rhs_rowptrs;
+
     return correct;
 }
 

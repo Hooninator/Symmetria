@@ -210,6 +210,8 @@ public:
             { logfile->OFS()<<to_str(t)<<std::endl; } );
     }
 
+    template <typename IT2, typename DT2>
+    friend bool operator==(CooTriples<IT2, DT2>& lhs, CooTriples<IT2, DT2>& rhs);
 
     std::vector<Triple> get_triples() {return triples;}
     inline IT get_nnz() {return this->triples.size();}
@@ -218,6 +220,32 @@ private:
     std::vector<Triple> triples;
 };
 
+template <typename IT2, typename DT2>
+bool operator==(CooTriples<IT2, DT2>& lhs, CooTriples<IT2, DT2>& rhs)
+{
+    double eps = 1e-3;
+    lhs.rowsort();
+    lhs.rowsort();
+    rhs.rowsort();
+    rhs.rowsort();
+
+    if (lhs.get_nnz() != rhs.get_nnz())
+        return false;
+
+    auto triple_comp = [=](typename CooTriples<IT2, DT2>::Triple& t1, typename CooTriples<IT2, DT2>::Triple& t2)
+    {
+        if (fabs(std::get<0>(t1) - std::get<0>(t2)) > eps)
+            return false;
+        return (std::get<1>(t1) == std::get<1>(t2)) && (std::get<2>(t1) == std::get<2>(t2));
+    };
+
+    std::vector<bool> comp_vec(lhs.get_nnz());
+
+    std::transform(lhs.begin(), lhs.end(), rhs.begin(), comp_vec.begin(), triple_comp);
+
+    return std::all_of(comp_vec.begin(), comp_vec.end(), [](bool a) {return a;});
+
+}
 
 }
 

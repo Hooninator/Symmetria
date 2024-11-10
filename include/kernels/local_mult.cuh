@@ -32,6 +32,9 @@ std::ofstream& operator<<(std::ofstream& os, DeviceTuples<IT, DT>& t)
 }
 
 
+/* NOTE: This transposes the output triples. This should ensure they're sorted by column,
+ * which is necessary for the multiway merge routine to function
+ */
 template <typename IT, typename IT2, typename DT>
 __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs, 
                                 std::tuple<IT, IT, DT> * d_triples,
@@ -46,8 +49,8 @@ __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs,
         IT end = d_rowptrs[wid+1];
         for (int j = start + lid; j < end; j += warpSize)
         {
-            std::get<0>(d_triples[j]) = wid;
-            std::get<1>(d_triples[j]) = d_colinds[j] + offset;
+            std::get<0>(d_triples[j]) = d_colinds[j] + offset;
+            std::get<1>(d_triples[j]) = wid;
             std::get<2>(d_triples[j]) = d_vals[j];
         }
     } 

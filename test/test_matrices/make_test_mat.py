@@ -28,10 +28,10 @@ def generate_matrix_market(nrows, ncols, non_zeros):
     matrix_transpose = np.transpose(matrix)
     matrix_product = np.matmul(matrix, matrix_transpose)
 
-    rows, cols = (np.nonzero(np.tril(matrix_product)))
+    rows, cols = (np.nonzero((matrix_product)))
 
     data = matrix_product[rows, cols]
-    mm_product = "%%MatrixMarket matrix coordinate integer general\n%d %d %d\n" % (nrows, ncols, non_zeros)
+    mm_product = "%%MatrixMarket matrix coordinate integer general\n%d %d %d\n" % (nrows, nrows, non_zeros)
     mm_product += "\n".join(f"{row + 1} {col + 1} {value}" for row, col, value in zip(rows, cols, data))
     mm_product += "\n"
 
@@ -50,12 +50,13 @@ def main():
     mm_format, mm_format_transpose, mm_product = generate_matrix_market(args.rows, args.cols, args.non_zeros)
     with open(args.name+".mtx", 'w') as file:
         file.write(mm_format)
-    with open(args.name+"_transpose.mtx", 'w') as file:
-        file.write(mm_format_transpose)
+
+    #with open(args.name+"_transpose.mtx", 'w') as file:
+    #    file.write(mm_format_transpose)
+
     with open(args.name+"_product.mtx", 'w') as file:
         file.write(mm_product)
 
-# The script will execute the main function if run as a standalone script
 if __name__ == "__main__":
     main()
 

@@ -44,7 +44,8 @@ public:
     virtual Triple map_glob_to_tile(const Triple& t) {assert(false);}
 
 
-    void set_from_coo(CooTriples<IT, DT> * triples, bool triangular=false)
+    void set_from_coo(CooTriples<IT, DT> * triples, const bool triangular=false, 
+                        const bool transpose=false)
     {
 
         /* Map each triple to the tile that owns it */
@@ -62,12 +63,12 @@ public:
             }
         );
 
-        set_from_coo(tile_triples);
+        set_from_coo(tile_triples, transpose);
 
     }
 
 
-    void set_from_coo(std::vector<CooTriples<IT, DT>>& tile_triples)
+    void set_from_coo(std::vector<CooTriples<IT, DT>>& tile_triples, const bool transpose)
     {
         DEBUG_PRINT("Making local size arrays");
 
@@ -115,13 +116,14 @@ public:
         this->tile_window = std::make_shared<TileWindow<IT, DT>>(window_size);
 
         DEBUG_PRINT("Placing tiles");
-        place_tiles(tile_triples);
+        place_tiles(tile_triples, transpose);
 
         DEBUG_PRINT("Done");
 
     }
 
-    void place_tiles(std::vector<CooTriples<IT, DT>>& tile_triples)
+
+    void place_tiles(std::vector<CooTriples<IT, DT>>& tile_triples, const bool transpose)
     {
         auto const& tile_inds = this->proc_map->get_my_tile_inds();
         for (int i=0; i<tile_triples.size(); i++)
@@ -129,7 +131,8 @@ public:
             auto& p = tile_inds[i];
             auto offset = tile_window->add_tile(tile_triples[i], 
                                             mb + row_edge_size(i), 
-                                            nb + col_edge_size(i));
+                                            nb + col_edge_size(i),
+                                            transpose);
             window_offsets[p.first * ntiles + p.second] = offset;
         }
 

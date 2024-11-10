@@ -25,9 +25,9 @@ public:
     }
 
 
-    uint64_t add_tile(CooTriples<IT, DT>& triples, const IT m, const IT n)
+    uint64_t add_tile(CooTriples<IT, DT>& triples, const IT m, const IT n, const bool transpose)
     {
-        local_matrices.emplace_back(m, n, triples, ds_buffer + tip_offset);
+        local_matrices.emplace_back(m, n, triples, ds_buffer + tip_offset, transpose);
 
 #ifdef DEBUG
         (local_matrices.end()-1)->dump_to_log(logptr, "Tile");
