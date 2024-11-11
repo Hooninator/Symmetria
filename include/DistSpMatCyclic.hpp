@@ -75,8 +75,8 @@ public:
 
         auto const& tile_inds = this->proc_map->get_my_tile_inds();
 
-        IT tile_rows = mb;
-        IT tile_cols = mb;
+        IT row_size = mb;
+        IT col_size = mb;
 
         if (transpose)
             std::swap(tile_rows, tile_cols);
@@ -88,11 +88,11 @@ public:
             auto& p = tile_inds[i];
 
             tile_nnz[p.first * ntiles + p.second] = tile_triples[i].get_nnz();
-            tile_rows[p.first * ntiles + p.second] = tile_rows + row_edge_size(i);
-            tile_cols[p.first * ntiles + p.second] = tile_cols + col_edge_size(i);
+            tile_rows[p.first * ntiles + p.second] = row_size;
+            tile_cols[p.first * ntiles + p.second] = col_size;
 
             window_size += aligned_tile_size(tile_triples[i].get_nnz(), 
-                                                mb + row_edge_size(i));
+                                                row_size);
         }
 
 
@@ -137,8 +137,8 @@ public:
         {
             auto& p = tile_inds[i];
             auto offset = tile_window->add_tile(tile_triples[i], 
-                                            mb + row_edge_size(i), 
-                                            nb + col_edge_size(i),
+                                            mb, 
+                                            nb, 
                                             transpose);
             window_offsets[p.first * ntiles + p.second] = offset;
         }
