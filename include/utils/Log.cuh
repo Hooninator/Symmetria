@@ -13,6 +13,8 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#include <thrust/host_vector.h>
+
 #define CUDA_CHECK(call) {                                                 \
     cudaError_t err = call;                                                \
     if (err != cudaSuccess) {                                              \
@@ -41,6 +43,14 @@ public:
         ofs.open(name);
     }
     
+    template <typename T>
+    void log_vec(const thrust::host_vector<T>& vec, const char * prefix)
+    {
+        ofs<<prefix<<std::endl;
+        std::for_each(vec.begin(), vec.end(), 
+                        [this](auto&  elem) {this->ofs<<elem<<'\n';});
+        ofs<<std::endl;
+    }
 
     template <typename T>
     void log_vec(const std::vector<T>& vec, const char * prefix)

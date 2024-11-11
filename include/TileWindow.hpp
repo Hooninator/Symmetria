@@ -5,6 +5,8 @@
 #include "CooTriples.hpp"
 #include "SpMat.hpp"
 
+#define GAP_BYTES 0
+
 namespace symmetria {
 
 template <typename IT, typename DT>
@@ -13,6 +15,7 @@ class TileWindow
 public:
     TileWindow(uint64_t loc_window_size)
     {
+        loc_window_size += GAP_BYTES * 100;
         //NOTE: loc_window_size is assumed to be aligned properly
         MPI_Allreduce(&loc_window_size, &window_size, 1,
                         MPIType<uint64_t>(), MPI_MAX,
@@ -20,7 +23,7 @@ public:
 
         DEBUG_PRINT("Window size: " + STR(window_size));
 
-        ds_buffer = (char *)(nvshmem_malloc(window_size));
+        ds_buffer = (char *)(nvshmem_calloc(window_size, sizeof(char)));
         tip_offset = 0;
     }
 
@@ -31,10 +34,11 @@ public:
 
 #ifdef DEBUG
         (local_matrices.end()-1)->dump_to_log(logptr, "Tile");
+        logptr->newline();
 #endif
 
         uint64_t result = tip_offset;
-        tip_offset += (local_matrices.end()-1)->get_total_bytes();
+        tip_offset += (local_matrices.end()-1)->get_total_bytes() + GAP_BYTES;
         assert(tip_offset <= window_size);
 
         return result;
@@ -53,7 +57,10 @@ public:
 
     ~TileWindow()
     {
-        NVSHMEM_FREE_SAFE(ds_buffer);
+        nvshmem_barrier_all();
+        if (ds_buffer != nullptr)
+            nvshmem_free(ds_buffer);
+        //NVSHMEM_FREE_SAFE(ds_buffer);
     }
 
 private:

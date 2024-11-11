@@ -85,14 +85,11 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
     std::vector<int> send_sizes(A.proc_map->get_grid_size());
     std::vector<int> send_displs(A.proc_map->get_grid_size());
 
-#ifdef DEBUG
-    logptr->OFS()<<"TUPLE MAPPINGS"<<std::endl;
-#endif
 
     for (auto& tuple : tuples->get_triples()) {
         /* Map tuple to correct process */
         int target = A.owner(tuple);
-#ifdef DEBUG
+#ifdef DEBUG_
         logptr->OFS()<<tuples->to_str(tuple)<<" mapped to "<<target<<std::endl;
         logptr->newline();
 #endif

@@ -49,6 +49,9 @@ public:
                         const bool transpose=false)
     {
 
+        if (transpose)
+            std::swap(this->mb, this->nb);
+
         /* Map each triple to the tile that owns it */
         std::vector<CooTriples<IT, DT>> tile_triples(this->n_local_tiles);
 
@@ -78,9 +81,6 @@ public:
         IT row_size = mb;
         IT col_size = nb;
 
-        if (transpose)
-            std::swap(row_size, col_size);
-
         uint64_t window_size = 0;
         /* Build the CSR arrays for each tile */
         for (int i=0; i<tile_triples.size(); i++) 
@@ -88,6 +88,9 @@ public:
             auto& p = tile_inds[i];
 
             tile_nnz[p.first * ntiles + p.second] = tile_triples[i].get_nnz();
+#ifdef DEBUG
+            logptr->OFS()<<"nnz in this tile: "<<tile_triples[i].get_nnz()<<std::endl;
+#endif
             tile_rows[p.first * ntiles + p.second] = row_size;
             tile_cols[p.first * ntiles + p.second] = col_size;
 
@@ -343,6 +346,7 @@ public:
         IT loc_i = std::get<0>(t) % this->mb;
         IT loc_j = std::get<1>(t) % this->nb;
 
+        /*
         IT mp = (this->m / this->mb) * this->mb;
         IT np = (this->n / this->nb) * this->nb;
 
@@ -350,6 +354,11 @@ public:
             loc_i += (std::get<0>(t) - mp);
         if (std::get<1>(t) >= np)
             loc_j += (std::get<1>(t) - np);
+            */
+#ifdef DEBUG
+        logptr->OFS()<<"i: "<<std::get<0>(t)<<", j: "<<std::get<1>(t)<<std::endl;
+        logptr->OFS()<<"i: "<<loc_i<<", j: "<<loc_j<<std::endl;
+#endif
         
         return {loc_i, loc_j, std::get<2>(t)};
 
@@ -365,13 +374,6 @@ public:
         int row_contrib = (std::min((i / this->mb), this->mtiles - 1) % this->proc_map->get_px())
                             * this->proc_map->get_py();
         int col_contrib = std::min((j / this->nb), this->ntiles - 1) % this->proc_map->get_py();
-
-#ifdef DEBUG
-        logptr->OFS()<<"Row contrib "<<row_contrib<<", Col contrib "<<col_contrib<<std::endl;
-        logptr->OFS()<<this->mb<<","<<this->nb<<std::endl;
-        logptr->OFS()<<this->proc_map->get_py()<<std::endl;
-        logptr->OFS()<<this->ntiles-1<<std::endl;
-#endif
 
         assert ((row_contrib + col_contrib) < this->proc_map->get_grid_size());
 

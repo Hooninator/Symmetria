@@ -34,26 +34,31 @@ public:
     {
         assert(sizeof(DT) >= sizeof(IT)); //otherwise alignment doesn't work
 
-        if (transpose)
-            std::swap(this->m, this->n);
 
 		size_t offset_colinds = aligned_offset<DT>(nnz * sizeof(DT));  
 		size_t offset_rowptrs = aligned_offset<DT>(offset_colinds + nnz * sizeof(IT)) ;
+#ifdef DEBUG
+        logptr->OFS()<<"Offset colinds: "<<offset_colinds<<std::endl;
+        logptr->OFS()<<"Offset rowptrs: "<<offset_rowptrs<<std::endl;
+        logptr->OFS()<<"Triples right before CSR"<<std::endl;
+        triples.dump_to_log(logptr);
+        logptr->newline();
+#endif
 
         if (nnz==0) {
             total_bytes = 0;
         } else {
 
-            total_bytes = aligned_offset<DT>(offset_rowptrs + (m+ 1) * sizeof(IT));
+            total_bytes = aligned_offset<DT>(offset_rowptrs + (this->m + 1) * sizeof(IT));
 
             this->ds_vals = (DT*)this->baseptr;
             this->ds_colinds = (IT*)(this->baseptr + offset_colinds);
             this->ds_rowptrs = (IT*)(this->baseptr + offset_rowptrs);
 
             if (transpose) {
-                build_csr<1, 0>(triples, m);
+                build_csr<1, 0>(triples, this->m);
             } else {
-                build_csr<0, 1>(triples, m);
+                build_csr<0, 1>(triples, this->m);
             }
 
         }
@@ -88,9 +93,20 @@ public:
             }
         );
 
+#ifdef DEBUG
+        logptr->log_vec(row_nnz, "Row nnz");
+#endif
+
+#ifdef DEBUG
+        logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 0");
+#endif
+
         thrust::device_vector<IT> d_row_nnz(row_nnz.begin(), row_nnz.end());
         thrust::inclusive_scan(d_row_nnz.begin(), d_row_nnz.end(), 
                                 thrust::device_pointer_cast(this->ds_rowptrs)+1);
+#ifdef DEBUG
+        logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 1");
+#endif
 
         thrust::fill_n(d_row_nnz.begin(), rows, IT(0));
 
@@ -106,6 +122,9 @@ public:
                                         this->ds_vals, this->ds_colinds, this->ds_rowptrs,
                                         triples.get_nnz());
         CUDA_CHECK(cudaDeviceSynchronize());
+#ifdef DEBUG
+        logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 2");
+#endif
 
         CUDA_FREE_SAFE(d_triples);
     }
@@ -125,6 +144,12 @@ public:
         CUDA_CHECK(cudaMemcpy(h_vals.data(), ds_vals, sizeof(DT)*this->nnz, cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_colinds.data(), ds_colinds, sizeof(IT)*this->nnz, cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_rowptrs.data(), ds_rowptrs, sizeof(IT)*(this->m + 1), cudaMemcpyDeviceToHost));
+
+#ifdef DEBUG
+        logptr->log_vec(h_vals, "host values");
+        logptr->log_vec(h_colinds, "host colinds");
+        logptr->log_vec(h_rowptrs, "host rowptrs");
+#endif
 
         CooTriples<IT, DT> triples(&h_vals, &h_colinds, &h_rowptrs);
         triples.dump_to_log(logfile);

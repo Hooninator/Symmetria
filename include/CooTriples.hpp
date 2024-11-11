@@ -224,8 +224,10 @@ template <typename IT2, typename DT2>
 bool operator==(CooTriples<IT2, DT2>& lhs, CooTriples<IT2, DT2>& rhs)
 {
     double eps = 1e-3;
+
     lhs.rowsort();
     lhs.rowsort();
+
     rhs.rowsort();
     rhs.rowsort();
 
