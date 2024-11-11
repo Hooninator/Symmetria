@@ -232,6 +232,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     DEBUG_PRINT("Setting from coo");
     A.set_from_coo(local_tuples, triangular);
     MPI_Barrier(MPI_COMM_WORLD);
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     MPI_File_close(&file_handle);
 

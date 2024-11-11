@@ -109,18 +109,14 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
                                                      MergePathOptions );
         ExecutionStats stats; //TODO: Do I have to have this
 
-        CUDA_CHECK(cudaDeviceSynchronize());
-
         /* Do multiply */
         ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, false, semiring);
-        CUDA_CHECK(cudaDeviceSynchronize());
     }
 
     nnz = C.nnz;
 
-#ifdef DEBUG
-    dump_dCSR_to_log(logptr, C);
-#endif
+    //dump_dCSR_to_log(logptr, C);
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     /* Convert to device triples */
     Triple * d_triples;

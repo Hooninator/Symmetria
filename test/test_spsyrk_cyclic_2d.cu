@@ -7,7 +7,7 @@
 
 #include "TestDriver.hpp"
 
-#define DEBUG
+//#define DEBUG
 #define EPS 0.001
 
 using namespace symmetria;
@@ -26,10 +26,12 @@ public:
         const uint32_t m = test.rows;
         const uint32_t n = test.cols;
         const uint32_t nnz = test.nnz;
-        const uint32_t mb = std::ceil((float)(m) / (2*sqrt(n_pes)));
-        const uint32_t nb = std::ceil((float)(n) / (2*sqrt(n_pes)));
-        const uint32_t mtiles = std::ceil( (float)m / (float)mb );
-        const uint32_t ntiles = std::ceil( (float)n / (float)nb );
+        const uint32_t mb = std::floor((float)m / (2*(int)sqrt(n_pes)));
+        const uint32_t nb = std::floor((float)n / (2*(int)sqrt(n_pes)));
+        const uint32_t mtiles = std::floor( (float)m / (float)mb );
+        const uint32_t ntiles = std::floor( (float)n / (float)nb );
+
+        TEST_PRINT("M: " + std::to_string(m) + " N: " + std::to_string(n) + " NNZ: " + std::to_string(nnz) + " MB: " + std::to_string(mb) + " NB: " + std::to_string(nb));
 
         const std::string name(test.name);
         const std::string path(std::string("../test/test_matrices/")+test.name+".mtx");

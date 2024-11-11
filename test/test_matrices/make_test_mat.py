@@ -7,7 +7,7 @@ def generate_matrix_market(nrows, ncols, non_zeros):
     matrix = np.zeros((nrows, ncols), dtype=int)
     non_zero_positions = np.random.choice(nrows*ncols, non_zeros, replace=False)
     for pos in non_zero_positions:
-        row = pos // nrows 
+        row = pos // ncols
         col = pos % ncols 
         matrix[row, col] = np.random.randint(1, 10)  # Random non-zero values between 1 and 9
 
@@ -31,7 +31,7 @@ def generate_matrix_market(nrows, ncols, non_zeros):
     rows, cols = (np.nonzero((matrix_product)))
 
     data = matrix_product[rows, cols]
-    mm_product = "%%MatrixMarket matrix coordinate integer general\n%d %d %d\n" % (nrows, nrows, non_zeros)
+    mm_product = "%%MatrixMarket matrix coordinate integer general\n%d %d %d\n" % (nrows, nrows, len(data))
     mm_product += "\n".join(f"{row + 1} {col + 1} {value}" for row, col, value in zip(rows, cols, data))
     mm_product += "\n"
 

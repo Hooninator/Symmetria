@@ -218,6 +218,9 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
     if (lhs.nnz != rhs.nnz ||
         lhs.m!= rhs.m||
         lhs.m!= rhs.m) {
+#ifdef DEBUG
+        logptr->OFS()<<"dims are messed up "<<lhs.m<<","<<rhs.m<<std::endl;
+#endif
         return false;
     }
 

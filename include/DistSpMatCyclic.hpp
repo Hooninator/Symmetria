@@ -28,8 +28,8 @@ public:
                     std::shared_ptr<P> proc_map):
         m(m), n(n), nnz(nnz),
         mb(mb), nb(nb),
-        mtiles(std::ceil((double)m / (double)mb)), 
-        ntiles(std::ceil((double)n / (double)nb)), 
+        mtiles(m / mb),
+        ntiles(n / nb),
         proc_map(proc_map)
     {
         assert(mb <= (m / proc_map->get_px()));
@@ -42,7 +42,7 @@ public:
 
 
     virtual int tile_owner(const Triple& t) {assert(false);}
-    virtual Triple map_glob_to_tile(const Triple& t) {assert(false);}
+    virtual Triple map_glob_to_tile(const Triple& t, const int tile_owner, const bool transpose) {assert(false);}
 
 
     void set_from_coo(CooTriples<IT, DT> * triples, const bool triangular=false, 
@@ -63,7 +63,7 @@ public:
                 int target_tile = this->tile_owner(t);
                 if (triangular && proc_map->is_upper_triangular(target_tile))
                     return;
-                tile_triples[target_tile].add_triple(this->map_glob_to_tile(t));
+                tile_triples[target_tile].add_triple(this->map_glob_to_tile(t, target_tile, transpose));
             }
         );
 
@@ -88,11 +88,16 @@ public:
             auto& p = tile_inds[i];
 
             tile_nnz[p.first * ntiles + p.second] = tile_triples[i].get_nnz();
+
+            IT row_e = false ? col_edge_size(i) : row_edge_size(i);
+            IT col_e = false ? row_edge_size(i) : col_edge_size(i);
 #ifdef DEBUG
             logptr->OFS()<<"nnz in this tile: "<<tile_triples[i].get_nnz()<<std::endl;
+            logptr->OFS()<<"rows in this tile: "<<row_size + row_e<<std::endl;
+            logptr->OFS()<<"cols in this tile: "<<col_size + col_e<<std::endl;
 #endif
-            tile_rows[p.first * ntiles + p.second] = row_size;
-            tile_cols[p.first * ntiles + p.second] = col_size;
+            tile_rows[p.first * ntiles + p.second] = row_size + row_e;
+            tile_cols[p.first * ntiles + p.second] = col_size + col_e;
 
             window_size += aligned_tile_size(tile_triples[i].get_nnz(), 
                                                 row_size);
@@ -130,6 +135,8 @@ public:
 
         DEBUG_PRINT("Done");
 
+        MPI_Barrier(proc_map->get_world_comm());
+
     }
 
 
@@ -140,8 +147,8 @@ public:
         {
             auto& p = tile_inds[i];
             auto offset = tile_window->add_tile(tile_triples[i], 
-                                            mb, 
-                                            nb, 
+                                            tile_rows[p.first * ntiles + p.second], 
+                                            tile_cols[p.first * ntiles + p.second], 
                                             transpose);
             window_offsets[p.first * ntiles + p.second] = offset;
         }
@@ -298,7 +305,7 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
         auto const& lhs_tile = lhs_tiles[i];
         auto const& rhs_tile = rhs_tiles[i];
 
-        //assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
+        assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
 
         if (lhs_tile.get_nnz()==0 || rhs_tile.get_nnz()==0) continue;
 
@@ -340,21 +347,27 @@ public:
 
 
     /* This maps a triple with global coordinates to local tile coordinates */
-    Triple map_glob_to_tile(const Triple& t) override
+    Triple map_glob_to_tile(const Triple& t, const int tile_owner, const bool transpose) override
     {
 
-        IT loc_i = std::get<0>(t) % this->mb;
-        IT loc_j = std::get<1>(t) % this->nb;
+        IT row_e = transpose ? this->col_edge_size(tile_owner) : this->row_edge_size(tile_owner);
+        IT col_e = transpose ? this->row_edge_size(tile_owner) : this->col_edge_size(tile_owner);
 
-        /*
+        IT loc_i = std::get<0>(t) % (this->mb);
+        IT loc_j = std::get<1>(t) % (this->nb);
+
         IT mp = (this->m / this->mb) * this->mb;
         IT np = (this->n / this->nb) * this->nb;
 
         if (std::get<0>(t) >= mp)
-            loc_i += (std::get<0>(t) - mp);
+            loc_i = this->mb + row_e - 1;
         if (std::get<1>(t) >= np)
-            loc_j += (std::get<1>(t) - np);
-            */
+            loc_j = this->nb + col_e - 1;
+        /*
+        loc_i += transpose ? col_edge_size(tile_ownder) : row_edge_size(tile_owner);
+        loc_j += transpose ? row_edge_size(tile_ownder) : col_edge_size(tile_owner);
+        */
+
 #ifdef DEBUG
         logptr->OFS()<<"i: "<<std::get<0>(t)<<", j: "<<std::get<1>(t)<<std::endl;
         logptr->OFS()<<"i: "<<loc_i<<", j: "<<loc_j<<std::endl;

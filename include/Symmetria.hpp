@@ -38,9 +38,9 @@ void symmetria_init()
     CUSPARSE_CHECK(cusparseCreate(&cusparse_handle));
 
     /* Logfiles */
-#ifdef DEBUG
+//#ifdef DEBUG
     logptr = new Log(my_pe);
-#endif
+//#endif
 
     /* Timers */
     timer_ptr = new Timer();
