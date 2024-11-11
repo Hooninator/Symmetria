@@ -114,7 +114,6 @@ public:
     void dump_to_log(Log * logfile, const char * prefix)
     {
         logfile->OFS()<<prefix<<std::endl;
-
         logfile->OFS()<<"nnz: "<<this->nnz<<", m: "<<this->m<<", n: "<<this->n<<std::endl;
 
         if (nnz==0) return;
@@ -168,13 +167,6 @@ private:
 template <typename IT, typename DT>
 bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
 {
-    /* Dimensions and nnz */
-    if (lhs.nnz != rhs.nnz ||
-        lhs.m!= rhs.m||
-        lhs.m!= rhs.m) {
-        return false;
-    }
-
     DT * h_lhs_vals = new DT[lhs.nnz];
     DT * h_rhs_vals = new DT[rhs.nnz];
     IT * h_lhs_colinds = new IT[lhs.nnz];
@@ -196,6 +188,14 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
     lhs_triples.dump_to_log(logptr, "LHS");
     rhs_triples.dump_to_log(logptr, "RHS");
 #endif
+
+    /* Dimensions and nnz */
+    if (lhs.nnz != rhs.nnz ||
+        lhs.m!= rhs.m||
+        lhs.m!= rhs.m) {
+        return false;
+    }
+
 
     bool correct = (lhs_triples == rhs_triples);
 

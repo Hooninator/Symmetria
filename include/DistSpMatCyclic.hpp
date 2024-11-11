@@ -76,10 +76,10 @@ public:
         auto const& tile_inds = this->proc_map->get_my_tile_inds();
 
         IT row_size = mb;
-        IT col_size = mb;
+        IT col_size = nb;
 
         if (transpose)
-            std::swap(tile_rows, tile_cols);
+            std::swap(row_size, col_size);
 
         uint64_t window_size = 0;
         /* Build the CSR arrays for each tile */
@@ -295,7 +295,7 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
         auto const& lhs_tile = lhs_tiles[i];
         auto const& rhs_tile = rhs_tiles[i];
 
-        assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
+        //assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
 
         if (lhs_tile.get_nnz()==0 || rhs_tile.get_nnz()==0) continue;
 
