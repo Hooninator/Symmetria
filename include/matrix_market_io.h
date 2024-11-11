@@ -85,10 +85,17 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
     std::vector<int> send_sizes(A.proc_map->get_grid_size());
     std::vector<int> send_displs(A.proc_map->get_grid_size());
 
+#ifdef DEBUG
+    logptr->OFS()<<"TUPLE MAPPINGS"<<std::endl;
+#endif
+
     for (auto& tuple : tuples->get_triples()) {
         /* Map tuple to correct process */
         int target = A.owner(tuple);
-
+#ifdef DEBUG
+        logptr->OFS()<<tuples->to_str(tuple)<<" mapped to "<<target<<std::endl;
+        logptr->newline();
+#endif
         send_tuples[target].push_back(tuple);
         send_sizes[target]++;
     }
@@ -219,7 +226,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     std::transform(local_tuples->begin(), local_tuples->end(), local_tuples->begin(),
         [&](auto& tuple) {return A.map_glob_to_local(tuple);});
 
-#ifdef DEBUG_
+#ifdef DEBUG
     logptr->OFS()<<"Local matrix"<<std::endl;
     local_tuples->dump_to_log(logptr);
 #endif

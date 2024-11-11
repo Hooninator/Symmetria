@@ -28,7 +28,8 @@ public:
                     std::shared_ptr<P> proc_map):
         m(m), n(n), nnz(nnz),
         mb(mb), nb(nb),
-        mtiles(m / mb), ntiles(n / nb),
+        mtiles(std::ceil((double)m / (double)mb)), 
+        ntiles(std::ceil((double)n / (double)nb)), 
         proc_map(proc_map)
     {
         assert(mb <= (m / proc_map->get_px()));
@@ -74,6 +75,12 @@ public:
 
         auto const& tile_inds = this->proc_map->get_my_tile_inds();
 
+        IT tile_rows = mb;
+        IT tile_cols = mb;
+
+        if (transpose)
+            std::swap(tile_rows, tile_cols);
+
         uint64_t window_size = 0;
         /* Build the CSR arrays for each tile */
         for (int i=0; i<tile_triples.size(); i++) 
@@ -81,8 +88,8 @@ public:
             auto& p = tile_inds[i];
 
             tile_nnz[p.first * ntiles + p.second] = tile_triples[i].get_nnz();
-            tile_rows[p.first * ntiles + p.second] = mb + row_edge_size(i);
-            tile_cols[p.first * ntiles + p.second] = nb + col_edge_size(i);
+            tile_rows[p.first * ntiles + p.second] = tile_rows + row_edge_size(i);
+            tile_cols[p.first * ntiles + p.second] = tile_cols + col_edge_size(i);
 
             window_size += aligned_tile_size(tile_triples[i].get_nnz(), 
                                                 mb + row_edge_size(i));
@@ -358,6 +365,13 @@ public:
         int row_contrib = (std::min((i / this->mb), this->mtiles - 1) % this->proc_map->get_px())
                             * this->proc_map->get_py();
         int col_contrib = std::min((j / this->nb), this->ntiles - 1) % this->proc_map->get_py();
+
+#ifdef DEBUG
+        logptr->OFS()<<"Row contrib "<<row_contrib<<", Col contrib "<<col_contrib<<std::endl;
+        logptr->OFS()<<this->mb<<","<<this->nb<<std::endl;
+        logptr->OFS()<<this->proc_map->get_py()<<std::endl;
+        logptr->OFS()<<this->ntiles-1<<std::endl;
+#endif
 
         assert ((row_contrib + col_contrib) < this->proc_map->get_grid_size());
 
