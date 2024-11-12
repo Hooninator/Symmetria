@@ -193,6 +193,12 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     return C;
 }
 
+/* Optimizations TODO
+ *      Get rid of extra constructor calls.
+ *      Parallelize loops with openmp
+ *      get_tile only set pointers if local
+ *      SA-comm
+ */
 
 template <typename SR, typename IT, typename DT, typename P>
 DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
