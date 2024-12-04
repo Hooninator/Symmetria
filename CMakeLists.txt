@@ -31,8 +31,8 @@ set(NVSHMEM_HOME "$ENV{NVSHMEM_HOME}")
 set(OPENSHMEM_HOME "/opt/cray/pe/sma/11.7.0/ofi/sma")
 
 set(BCL_HOME "~/bcl")
-set(GALATIC_HOME "~/GALATIC/")
-set(COMBBLAS_HOME "./deps/CombBLAS/install/")
+set(GALATIC_HOME "./deps/CombBLAS/install/include/GALATIC/")
+set(COMBBLAS_HOME "/global/homes/j/jbellav/SpSYRK/deps/CombBLAS/install")
 
 # Include directories
 target_include_directories(SpSYRK PUBLIC include)
@@ -111,6 +111,8 @@ endmacro()
 
 # Experiments
 add_experiment(run_spsyrk)
+add_experiment(run_combblas)
+target_link_libraries(run_combblas PUBLIC "-L${COMBBLAS_HOME}/lib" -lCombBLAS -lGraphGenlib  -lUsortlib)
 
 
 # Tests

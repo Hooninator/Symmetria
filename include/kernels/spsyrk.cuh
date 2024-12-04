@@ -154,7 +154,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
     /* Merge output tuples */
 	SR semiring;
-    auto C_final = merge_hash_combblas<SR>(C_products, C_nnz_arr, 
+    auto C_final = merge_combblas<SR>(C_products, C_nnz_arr, 
                                            A.get_loc_rows(), A.get_rows());
 
     DEBUG_PRINT("Done with merge");
@@ -215,6 +215,9 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
     IT total_nnz = 0;
     
     /* Main loop */
+
+    START_TIMER("MainLoop");
+
     for (int tile_id = 0; tile_id<my_tile_inds.size(); tile_id++)
     {
         auto tile_inds = my_tile_inds[tile_id];
@@ -236,8 +239,12 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         {
             /* Get kth tile in prow i and prow j */
 
+            START_TIMER("TileGet");
+
             SpMat<IT, DT> A_tile = A.get_tile_sync(i, k);
             SpMat<IT, DT> B_tile = A.get_tile_sync(j, k);
+            
+            STOP_TIMER("TileGet");
 
 #ifdef DEBUG
             A_tile.dump_to_log(logptr, "A_tile");
@@ -252,29 +259,35 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
                 continue;
             }
 
+            START_TIMER("LocalMultiply");
 
             IT my_nnz = 0;
             auto C_tuples = local_spgemm_galatic<SR>(A_tile, B_tile, my_nnz);
             CUDA_CHECK(cudaDeviceSynchronize());
 
-#ifdef DEBUG
-            logptr->OFS()<<"My nnz: "<<my_nnz<<std::endl;
-#endif
+            STOP_TIMER("LocalMultiply");
 
             C_nnz_arr.push_back(my_nnz);
 
             /* TODO: If i==j only copy lower triangle */
+
+            START_TIMER("TuplesMemcpy");
+
             std::tuple<IT, IT, DT> * C_to_add = new std::tuple<IT, IT, DT>[my_nnz];
             CUDA_CHECK(cudaMemcpy(C_to_add, C_tuples, sizeof(std::tuple<IT, IT, DT>)*my_nnz, 
                                     cudaMemcpyDeviceToHost));
             C_products.push_back(C_to_add);
+            STOP_TIMER("TuplesMemcpy");
 
             A_tile.free();
             B_tile.free();
             CUDA_FREE_SAFE(C_tuples);
         }
 
-        auto C_tile = merge_hash_combblas<SR>(C_products, C_nnz_arr.data(), A.get_mb(), A.get_mb());
+        START_TIMER("Merge");
+        auto C_tile = merge_combblas<SR>(C_products, C_nnz_arr.data(), A.get_mb(), A.get_mb());
+        STOP_TIMER("Merge");
+
         total_nnz += C_tile.get_nnz();
 
 #ifdef DEBUG
@@ -282,29 +295,23 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 #endif
 
         ///* TODO: add a copy constructor to CooTriples and change this to emplace_back */
+        START_TIMER("MoveTriples");
         C_tiles[tile_id] = C_tile;
+        STOP_TIMER("MoveTriples");
 
     }
+
+    STOP_TIMER("MainLoop");
 
     DEBUG_PRINT("Out of main loop");
 
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, proc_map->get_world_comm());
-    DEBUG_PRINT("Total nnz: " + STR(total_nnz));
-
-
-#ifdef DEBUG
-    //logptr->OFS()<<"C tiles"<<std::endl;
-    //std::for_each(C_tiles.begin(), C_tiles.end(), 
-    //        [&](auto& C_tile) {C_tile.dump_to_log(logptr);});
-#endif
 
     DistSpMatCyclic2D<IT, DT, P> C(A.get_rows(), A.get_rows(), total_nnz, A.get_mb(), A.get_mb(), proc_map);
 
-#ifdef DEBUG
-    logptr->OFS()<<"C COMPUTED"<<std::endl;
-#endif
-
+    START_TIMER("CSR2COO");
     C.set_from_coo(C_tiles, true);
+    STOP_TIMER("CSR2COO");
 
     //TODO: Barrier for mpi and nvshmem
     MPI_Barrier(proc_map->get_world_comm());

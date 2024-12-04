@@ -32,7 +32,7 @@ std::string to_str(const std::tuple<IT, IT, DT> t1)
 
 
 template <typename SR, typename IT, typename DT>
-CooTriples<IT, DT> merge_hash_combblas(std::vector<std::tuple<IT, IT, DT> *> to_merge, const IT * nnz_arr, const IT rows, const IT cols)
+CooTriples<IT, DT> merge_combblas(std::vector<std::tuple<IT, IT, DT> *> to_merge, const IT * nnz_arr, const IT rows, const IT cols)
 {
 #ifdef DEBUG
     logptr->OFS()<<"MERGING TUPLES"<<std::endl;

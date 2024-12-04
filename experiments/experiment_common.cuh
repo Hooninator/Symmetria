@@ -16,9 +16,9 @@ struct ExperimentConfig
 
 
 /* Note: Does not handle ill formed commands well */
-ExperimentConfig parse_args(int argc, char ** argv)
+ExperimentConfig parse_args(int argc, char ** argv, std::vector<const char *>& req_args)
 {
-    std::vector<const char *> req_args {"--rows", "--cols", "--nnz", "--ntrials", "--name", "--type"};
+    //TODO: Add tile args
 
     std::map<std::string, const char *> args;
     for (int i=1; i<argc; i+=2)

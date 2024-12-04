@@ -7,15 +7,15 @@
     },
     {
         "name": "ts_small" ,
-        "rows": 20,
-        "cols": 10,
-        "nnz":16 
+        "rows": 40,
+        "cols": 20,
+        "nnz":80 
     },
     {
         "name": "sf_small" ,
-        "rows": 10,
-        "cols": 20,
-        "nnz":16 
+        "rows": 20,
+        "cols": 40,
+        "nnz":80 
     },
     {
         "name": "n17" ,
