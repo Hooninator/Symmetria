@@ -60,14 +60,14 @@ public:
 
 int main(int argc, char ** argv)
 {
-    int test_id = -1;
+    std::string test_name = "none";
     if (argc > 1)
-        test_id = std::atoi(argv[1]);
+        test_name = std::string((argv[1]));
 
     symmetria_init();
     {
-        TestDriver<TestSpSYRKSync1D> manager("../test/test_configs.json", "SpSYRK Sync 1D", test_id);
-        manager.run_tests();
+        TestDriver<TestSpSYRKSync1D> manager("../test/test_configs.json", "SpSYRK Sync 1D");
+        manager.run_tests(test_name.c_str());
     }
     symmetria_finalize();
 	

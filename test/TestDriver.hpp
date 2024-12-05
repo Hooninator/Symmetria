@@ -36,15 +36,13 @@ class TestDriver
 
 public:
 
-    TestDriver(const std::string json_path, const std::string test_name, const int test_id=-1):
-        tests(0), test_name(test_name)
+    TestDriver(const std::string json_path, const std::string test_name):
+        test_name(test_name)
     {
         std::ifstream infile(json_path);
 
         json json_data;
         infile >> json_data;
-
-        int id = 0;
 
         try {
             for (auto const& record : json_data)
@@ -55,12 +53,7 @@ public:
                 params.nnz = record.at("nnz").get<uint64_t>();
                 params.name= record.at("name").get<std::string>();
                 
-                if (test_id==-1||id==test_id) {
-                    tests.push_back(params);
-                    id++;
-                } else {
-                    id++;
-                }
+                tests[params.name] = params;
 
             }
         } catch(json::exception& e) {
@@ -70,25 +63,39 @@ public:
     }
 
 
-    void run_tests()
+    void run_tests(const char * specific_test_name)
     {
         int npassed = 0;
         std::stringstream ss;
-        for (int i=0; i<tests.size(); i++)
+        int n_tests =  (!strcmp(specific_test_name, "none")) ? tests.size() : 1;
+
+        int i = 0;
+        for (auto const& kvpair : tests)
         {
+            auto this_test_name = kvpair.first;
+            auto test = kvpair.second;
+
+            if ((strcmp(specific_test_name, "none")) &&
+                    (this_test_name.compare(specific_test_name)))
+            {
+                continue;
+            }
+
+
             ss<<BRIGHT_YELLOW<<"=====TEST "<<test_name
-                 <<" ["<<i+1<<"/"<<tests.size()<<"]"<<"====="<<RESET
+                 <<" ["<<i+1<<"/"<<n_tests<<"]"<<"====="<<RESET
                  <<std::endl
-                 <<tests[i].to_str()
+                 <<test.to_str()
                  <<std::endl;
             TEST_PRINT(ss.str());
 
             ss.str("");
 
-            bool passed = this->run_test(tests[i]);
+            bool passed = this->run_test(test);
+
             if (passed) {
                 npassed++;
-                TEST_SUCCESS("[" + STR(i+1) + "/" + STR(tests.size()) + "]");
+                TEST_SUCCESS("[" + STR(i+1) + "/" + STR(n_tests) + "]");
             } else {
                 TEST_FAIL();
                 exit(1);
@@ -98,9 +105,10 @@ public:
             TEST_PRINT(ss.str());
 
             ss.str("");
+            i++;
         }
 
-        if (npassed == tests.size()) {
+        if (npassed == n_tests) {
             ss<<GREEN<<"All "<<test_name<<" tests passed!"<<RESET<<std::endl;
             TEST_PRINT(ss.str());
         }
@@ -114,7 +122,7 @@ public:
 
 
     std::string test_name;
-    std::vector<TestParams> tests;
+    std::map<std::string, TestParams> tests;
 
 };
 

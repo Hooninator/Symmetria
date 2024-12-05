@@ -160,23 +160,15 @@ public:
 
 int main(int argc, char ** argv)
 {
+    std::string test_name = "none";
+    if (argc > 1)
+        test_name = std::string((argv[1]));
 
     symmetria_init();
-
-#ifdef DEBUG_TEST
-    std::stringstream ss;
-    ss<<"TestLogfile"<<symmetria::my_pe<<".out";
-    test_logptr = new Log(ss.str().c_str());
-#endif
-
     {
         TestDriver<TestTranspose> manager("../test/test_configs.json", "Transpose");
-        manager.run_tests();
+        manager.run_tests(test_name.c_str());
     }
-
-#ifdef DEBUG_TEST
-    delete test_logptr;
-#endif
 
     symmetria_finalize();
 	
