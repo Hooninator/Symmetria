@@ -30,12 +30,23 @@ public:
     }
 
 
+    //NOTE: This is only called with triangular=true from the io routines
     void set_from_coo(CooTriples<IT, DT>* triples, bool triangular=false)
     {
 
         assert(this->m > 0 && this->loc_m > 0);
 
+        if (triangular) {
+            triples->tril(this->loc_m * (1 + this->proc_map->get_rank()));
+        }
+
         this->loc_nnz = triples->get_nnz();
+
+        DEBUG_PRINT("Local nnz in set coo: " + STR(this->loc_nnz));
+
+#ifdef DEBUG
+        triples->dump_to_log(logptr, "Setting from coo triples");
+#endif
 
         /* Allgather to get global tile sizes array */
         IT send = this->loc_nnz;

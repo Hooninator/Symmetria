@@ -49,8 +49,8 @@ __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs,
         IT end = d_rowptrs[wid+1];
         for (int j = start + lid; j < end; j += warpSize)
         {
-            std::get<0>(d_triples[j]) = d_colinds[j] + offset;
-            std::get<1>(d_triples[j]) = wid;
+            std::get<0>(d_triples[j]) = d_colinds[j];
+            std::get<1>(d_triples[j]) = wid + offset;
             std::get<2>(d_triples[j]) = d_vals[j];
         }
     } 
@@ -65,7 +65,6 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
     assert((A.nnz > 0) && (A_t.nnz > 0));
 
     using Triple = std::tuple<IT, IT, DT>;
-
 
     dCSR<DT> C;
     SR semiring;

@@ -15,11 +15,13 @@
 #define TEST_CHECK(condition) \
     do { \
         int eval_condition = condition ? 1 : 0; \
-        MPI_Allreduce(MPI_IN_PLACE, &eval_condition, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);\
-        if (!(condition)) { \
-            std::cerr <<RED<< "Error: Assertion failed at " << __FILE__ << ":" << __LINE__ << RESET<<std::endl; \
-            return false;\
+        int rank; \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+        if (!(eval_condition)) { \
+            std::cerr <<RED<< "Rank "<<rank<<"; Assertion failed at " << __FILE__ << ":" << __LINE__ << RESET<<std::endl; \
         } \
+        MPI_Allreduce(MPI_IN_PLACE, &eval_condition, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);\
+        return (bool)(eval_condition); \
     } while (0)
 
 

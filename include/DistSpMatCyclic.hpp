@@ -45,6 +45,7 @@ public:
     virtual Triple map_glob_to_tile(const Triple& t, const int tile_owner, const bool transpose) {assert(false);}
 
 
+    //NOTE: This is only called from the io routines
     void set_from_coo(CooTriples<IT, DT> * triples, const bool triangular=false, 
                         const bool transpose=false)
     {
@@ -92,9 +93,9 @@ public:
             IT row_e = false ? col_edge_size(i) : row_edge_size(i);
             IT col_e = false ? row_edge_size(i) : col_edge_size(i);
 #ifdef DEBUG
-            logptr->OFS()<<"nnz in this tile: "<<tile_triples[i].get_nnz()<<std::endl;
-            logptr->OFS()<<"rows in this tile: "<<row_size + row_e<<std::endl;
-            logptr->OFS()<<"cols in this tile: "<<col_size + col_e<<std::endl;
+            //logptr->OFS()<<"nnz in this tile: "<<tile_triples[i].get_nnz()<<std::endl;
+            //logptr->OFS()<<"rows in this tile: "<<row_size + row_e<<std::endl;
+            //logptr->OFS()<<"cols in this tile: "<<col_size + col_e<<std::endl;
 #endif
             tile_rows[p.first * ntiles + p.second] = row_size + row_e;
             tile_cols[p.first * ntiles + p.second] = col_size + col_e;
@@ -154,8 +155,8 @@ public:
         }
         
 #ifdef DEBUG
-        logptr->log_vec(window_offsets, "Window offsets preallreduce");
-        logptr->newline();
+        //logptr->log_vec(window_offsets, "Window offsets preallreduce");
+        //logptr->newline();
 #endif
 
         MPI_Allreduce(MPI_IN_PLACE, 
@@ -163,8 +164,8 @@ public:
                       MPIType<uint64_t>(), MPI_SUM, 
                       this->proc_map->get_world_comm());
 #ifdef DEBUG
-        logptr->log_vec(window_offsets, "Window offsets");
-        logptr->newline();
+        //logptr->log_vec(window_offsets, "Window offsets");
+        //logptr->newline();
 #endif
     }
 
@@ -181,8 +182,8 @@ public:
         uint64_t offset = window_offsets[i * ntiles + j];
 
 #ifdef DEBUG
-        logptr->OFS()<<"Target PE: "<<target_pe<<std::endl;
-        logptr->OFS()<<"Offset: "<<offset<<std::endl;
+        //logptr->OFS()<<"Target PE: "<<target_pe<<std::endl;
+        //logptr->OFS()<<"Offset: "<<offset<<std::endl;
 #endif
 
 
@@ -291,23 +292,19 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
     auto const& lhs_tiles = lhs.get_tile_window()->get_local_matrices();
     auto const& rhs_tiles = rhs.get_tile_window()->get_local_matrices();
 
-    assert (lhs_tiles.size() == rhs_tiles.size());
+    if(lhs_tiles.size() != rhs_tiles.size())
+        return false;
+
     int t = lhs_tiles.size();
 
     bool correct = true;
 
-    MPI_Barrier(lhs.proc_map->get_world_comm());
-
     for (int i=0; i<t; i++)
     {
-        nvshmem_barrier_all();
-
         auto const& lhs_tile = lhs_tiles[i];
         auto const& rhs_tile = rhs_tiles[i];
 
-        assert(lhs_tile.get_nnz() == rhs_tile.get_nnz());
-
-        if (lhs_tile.get_nnz()==0 || rhs_tile.get_nnz()==0) continue;
+        if (lhs_tile.get_nnz()==0 && rhs_tile.get_nnz()==0) continue;
 
         bool equals = (lhs_tile == rhs_tile);
 
@@ -317,7 +314,7 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
 
     int correct_int = correct ? 1 : 0;
 
-    MPI_Allreduce(MPI_IN_PLACE, &correct_int, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
+    //MPI_Allreduce(MPI_IN_PLACE, &correct_int, 1, MPI_INT, MPI_LAND, lhs.proc_map->get_world_comm());
 
     return true ? (correct_int) : false;
 }
@@ -363,14 +360,10 @@ public:
             loc_i = this->mb + row_e - 1;
         if (std::get<1>(t) >= np)
             loc_j = this->nb + col_e - 1;
-        /*
-        loc_i += transpose ? col_edge_size(tile_ownder) : row_edge_size(tile_owner);
-        loc_j += transpose ? row_edge_size(tile_ownder) : col_edge_size(tile_owner);
-        */
 
 #ifdef DEBUG
-        logptr->OFS()<<"i: "<<std::get<0>(t)<<", j: "<<std::get<1>(t)<<std::endl;
-        logptr->OFS()<<"i: "<<loc_i<<", j: "<<loc_j<<std::endl;
+        //logptr->OFS()<<"i: "<<std::get<0>(t)<<", j: "<<std::get<1>(t)<<std::endl;
+        //logptr->OFS()<<"i: "<<loc_i<<", j: "<<loc_j<<std::endl;
 #endif
         
         return {loc_i, loc_j, std::get<2>(t)};

@@ -6,6 +6,37 @@
 namespace symmetria {
 namespace io {
 
+template <typename IT>
+std::tuple<IT, IT, IT> get_mm_metadata(const std::string& path)
+{
+    std::string line;	
+    std::ifstream mm_file(path);
+
+    IT * buf = new IT[3];
+
+    while (std::getline(mm_file, line)) {
+
+        // Skip header
+        if (line.find('%')!=std::string::npos) continue;
+        
+        std::istringstream iss(line);
+
+        // First line after header is rows, cols, nnz
+        iss>>buf[0]>>buf[1]>>buf[2];
+        break;
+            
+    }
+
+    mm_file.close();
+
+    std::tuple<IT, IT, IT> result {buf[0], buf[1], buf[2]};
+
+    delete[] buf;
+
+    return result;
+}
+
+
 template <typename IT, typename DT>
 CooTriples<IT, DT> * parse_mm_lines(int num_bytes, 
                                     int my_offset, 
@@ -89,9 +120,8 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
     for (auto& tuple : tuples->get_triples()) {
         /* Map tuple to correct process */
         int target = A.owner(tuple);
-#ifdef DEBUG_
+#ifdef DEBUG
         logptr->OFS()<<tuples->to_str(tuple)<<" mapped to "<<target<<std::endl;
-        logptr->newline();
 #endif
         send_tuples[target].push_back(tuple);
         send_sizes[target]++;
@@ -137,6 +167,12 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
 template <typename IT, typename DT, typename Mat>
 void read_mm(const char * path, Mat& A, bool triangular=false)
 {
+    
+#ifdef DEBUG
+    logptr->OFS()<<"START READING"<<std::endl;
+    logptr->newline();
+#endif
+
     using CooTripleVec = std::vector<std::tuple<IT, IT, DT>>;
 
     CooTripleVec tuples;
@@ -185,6 +221,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     /* Begin MPI IO */
     MPI_File file_handle;
+    MPI_File_set_errhandler(file_handle, MPI_ERRORS_ARE_FATAL); //Kill if can't open file 
     MPI_File_open(MPI_COMM_WORLD, path, MPI_MODE_RDONLY, MPI_INFO_NULL, &file_handle);
 
     /* Compute offset info */
@@ -204,6 +241,10 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     /* Parse my lines */
     auto read_tuples = parse_mm_lines<IT, DT>(num_bytes, my_offset, buf, file_handle);
+
+#ifdef DEBUG
+    read_tuples->dump_to_log(logptr, "Tuples read from file");
+#endif
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -238,6 +279,11 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     DEBUG_PRINT("Done reading matrix");
     delete local_tuples;
+
+#ifdef DEBUG
+    logptr->OFS()<<"DONE READING"<<std::endl;
+    logptr->newline();
+#endif
 
 }
 

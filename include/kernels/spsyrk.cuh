@@ -50,6 +50,11 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Create transposed version of my local block row */
     auto A_t_loc = transpose_outofplace(A_loc);
 
+#ifdef DEBUG
+    logptr->OFS()<<"Local A"<<std::endl;
+    dump_dCSR_to_log(logptr, A_loc);
+#endif
+
     /* This matrix will store tiles brodcast by other processes */
     dCSR<DT> A_recv;
 
@@ -72,7 +77,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* Allocate space for broadcast tiles */
         if (k==rank) {
-            A_recv = A_t_loc;
+            A_recv = A_loc;
 
 #ifdef DEBUG_LOG
             logptr->OFS()<<"Sending round "<<k<<std::endl;
@@ -80,7 +85,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 #endif
 
         } else {
-            A_recv.alloc(A.get_loc_cols(), A.get_loc_rows(), A.get_tile_sizes()[k]);
+            A_recv.alloc(A.get_loc_rows(), A.get_loc_cols(), A.get_tile_sizes()[k]);
         }
 
 #ifdef TIMING
@@ -89,6 +94,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* Non-blocking broadcast of tranposed block row k */
         //TODO: Pack every buffer into one sendbuf and unpack it on the receiver
+        //This should also probably be in dCSR_utils
         mpi::ibcast_tile(0, comms[k], //always root 0 because we're not using comm world
                           A_recv.data, A_recv.col_ids, A_recv.row_offsets,
                           requests, A_recv.nnz, A_recv.rows);
@@ -103,7 +109,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         timer_ptr->stop_timer("Broadcast");
 #endif
 
-#ifdef DEBUG_
+#ifdef DEBUG
         logptr->OFS()<<"Received round "<<k<<std::endl;
         dump_dCSR_to_log(logptr, A_recv);
 #endif
@@ -115,7 +121,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         /* If rank > k, multiply the tile I just received */
         IT nnzC;
         IT offset = k * (A.get_rows() / p);
-        auto d_C_acc = local_spgemm_galatic<SR>(A_loc, A_recv, nnzC, offset);
+        auto d_C_acc = local_spgemm_galatic<SR>(A_recv, A_t_loc, nnzC, offset);
         CUDA_CHECK(cudaDeviceSynchronize());
         C_nnz_arr[k] = nnzC;
 
@@ -171,6 +177,8 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     IT total_nnz = C_final.get_nnz();
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, world);
 
+    DEBUG_PRINT("Final nnz: " + STR(total_nnz));
+
     /* Cleanup */
     MPI_Group_free(&world_group);
     clear_dCSR_ptrs(A_loc); //necessary to prevent destructor from freeing A
@@ -190,6 +198,8 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     timer_ptr->stop_timer("OutputConstruction");
 #endif
 
+    DEBUG_PRINT("Done");
+
     return C;
 }
 
@@ -203,6 +213,10 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 template <typename SR, typename IT, typename DT, typename P>
 DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 {
+
+#ifdef DEBUG
+    logptr->OFS()<<"START SPSYRK"<<std::endl;
+#endif
 
     /* Bookkeeping */
     auto tile_window = A.get_tile_window();
@@ -318,6 +332,10 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
     nvshmem_barrier_all();
 
     DEBUG_PRINT("DONE");
+
+#ifdef DEBUG
+    logptr->OFS()<<"END SPSYRK"<<std::endl;
+#endif
 
     return C;
 

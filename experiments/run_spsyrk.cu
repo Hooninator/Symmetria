@@ -6,6 +6,7 @@ using namespace symmetria;
 typedef unsigned int IT;
 typedef double DT;
 
+#define THREADED
 
 void run_spsyrk_1d(ExperimentConfig& config)
 {
@@ -18,6 +19,7 @@ void run_spsyrk_1d(ExperimentConfig& config)
         unsigned int n = config.cols;
         unsigned int nnz = config.nnz;
         unsigned int ntrials = config.ntrials;
+
 
         std::shared_ptr<ProcMap> proc_map = std::make_shared<ProcMap>(n_pes, MPI_COMM_WORLD);
 
@@ -37,8 +39,10 @@ void run_spsyrk_1d(ExperimentConfig& config)
 
             double t = timer_ptr->get_timer("SpSYRK");
             
-            if (symmetria::my_pe==0)
+            if (symmetria::my_pe==0) {
                 std::cout<<"Time for SpSYRK: "<<t<<"s"<<std::endl;
+                std::cout<<"NNZ C: "<<C_computed.get_nnz()<<std::endl;
+            }
 
             /* Write timer to CSV */
             std::string csv_name("timings_spsyrk_1d_"+STR(symmetria::my_pe)+".csv");
@@ -96,8 +100,10 @@ void run_spsyrk_2d(ExperimentConfig& config)
 
             double t = timer_ptr->get_timer("SpSYRK");
             
-            if (symmetria::my_pe==0)
+            if (symmetria::my_pe==0) {
                 std::cout<<"Time for SpSYRK: "<<t<<"s"<<std::endl;
+                std::cout<<"NNZ C: "<<C_computed.get_nnz()<<std::endl;
+            }
 
             /* Write timer to CSV */
             std::string csv_name("timings_spsyrk_2d_"+STR(symmetria::my_pe)+".csv");

@@ -38,11 +38,11 @@ public:
 		size_t offset_colinds = aligned_offset<DT>(nnz * sizeof(DT));  
 		size_t offset_rowptrs = aligned_offset<DT>(offset_colinds + nnz * sizeof(IT)) ;
 #ifdef DEBUG
-        logptr->OFS()<<"Offset colinds: "<<offset_colinds<<std::endl;
-        logptr->OFS()<<"Offset rowptrs: "<<offset_rowptrs<<std::endl;
-        logptr->OFS()<<"Triples right before CSR"<<std::endl;
-        triples.dump_to_log(logptr);
-        logptr->newline();
+        //logptr->OFS()<<"Offset colinds: "<<offset_colinds<<std::endl;
+        //logptr->OFS()<<"Offset rowptrs: "<<offset_rowptrs<<std::endl;
+        //logptr->OFS()<<"Triples right before CSR"<<std::endl;
+        //triples.dump_to_log(logptr);
+        //logptr->newline();
 #endif
 
         if (nnz==0) {
@@ -94,18 +94,18 @@ public:
         );
 
 #ifdef DEBUG
-        logptr->log_vec(row_nnz, "Row nnz");
+        //logptr->log_vec(row_nnz, "Row nnz");
 #endif
 
 #ifdef DEBUG
-        logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 0");
+        //logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 0");
 #endif
 
         thrust::device_vector<IT> d_row_nnz(row_nnz.begin(), row_nnz.end());
         thrust::inclusive_scan(d_row_nnz.begin(), d_row_nnz.end(), 
                                 thrust::device_pointer_cast(this->ds_rowptrs)+1);
 #ifdef DEBUG
-        logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 1");
+        //logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 1");
 #endif
 
         thrust::fill_n(d_row_nnz.begin(), rows, IT(0));
@@ -123,7 +123,7 @@ public:
                                         triples.get_nnz());
         CUDA_CHECK(cudaDeviceSynchronize());
 #ifdef DEBUG
-        logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 2");
+        //logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 2");
 #endif
 
         CUDA_FREE_SAFE(d_triples);
@@ -192,6 +192,10 @@ private:
 template <typename IT, typename DT>
 bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
 {
+
+    if ((lhs.nnz==0 || rhs.nnz==0) && (lhs.nnz != rhs.nnz))
+        return false;
+
     DT * h_lhs_vals = new DT[lhs.nnz];
     DT * h_rhs_vals = new DT[rhs.nnz];
     IT * h_lhs_colinds = new IT[lhs.nnz];
@@ -215,15 +219,12 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
 #endif
 
     /* Dimensions and nnz */
-    if (lhs.nnz != rhs.nnz ||
-        lhs.m!= rhs.m||
-        lhs.m!= rhs.m) {
+    if (lhs.nnz != rhs.nnz || lhs.m != rhs.m) {
 #ifdef DEBUG
         logptr->OFS()<<"dims are messed up "<<lhs.m<<","<<rhs.m<<std::endl;
 #endif
         return false;
     }
-
 
     bool correct = (lhs_triples == rhs_triples);
 

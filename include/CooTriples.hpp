@@ -170,6 +170,30 @@ public:
     }
 
 
+    void tril(const IT tile_rows)
+    {
+        auto nnz_tril = std::count_if(triples.begin(), triples.end(), 
+                [&](const Triple& t) {return is_tril(t, tile_rows);});
+        std::vector<Triple> tril_triples(nnz_tril);
+        std::copy_if(triples.begin(), triples.end(), tril_triples.begin(), 
+                [&](const Triple& t) {return is_tril(t, tile_rows);});
+        triples = std::move(tril_triples);
+    }
+
+
+    void transpose()
+    {
+        std::for_each(triples.begin(), triples.end(),
+                [](Triple& t) {std::swap(std::get<0>(t), std::get<1>(t));});
+    }
+
+
+    bool is_tril(const Triple& t, const IT tile_rows)
+    {
+        return std::get<1>(t) <= tile_rows;
+    }
+
+
     struct IndHash
     {
         size_t operator()(const std::pair<IT,IT>& inds) const

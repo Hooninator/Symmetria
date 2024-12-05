@@ -6,6 +6,12 @@
 #include <algorithm>
 #include <exception>
 
+#define EXP_PRINT(msg) do { \
+    int rk; \
+    MPI_Comm_rank(MPI_COMM_WORLD, &rk); \
+    if (rk==0) std::cout<<msg<<std::endl; \
+} while(0);
+
 
 struct ExperimentConfig
 {
@@ -37,6 +43,7 @@ ExperimentConfig parse_args(int argc, char ** argv, std::vector<const char *>& r
             }
         }
     );
+
         
     return ExperimentConfig {(unsigned int)std::atoi(args["--rows"]), 
                             (unsigned int)std::atoi(args["--cols"]),

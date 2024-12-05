@@ -21,8 +21,6 @@ public:
                         MPIType<uint64_t>(), MPI_MAX,
                         MPI_COMM_WORLD);
 
-        DEBUG_PRINT("Window size: " + STR(window_size));
-
         ds_buffer = (char *)(nvshmem_calloc(window_size, sizeof(char)));
         tip_offset = 0;
     }
@@ -33,8 +31,8 @@ public:
         local_matrices.emplace_back(m, n, triples, ds_buffer + tip_offset, transpose);
 
 #ifdef DEBUG
-        (local_matrices.end()-1)->dump_to_log(logptr, "Tile");
-        logptr->newline();
+        //(local_matrices.end()-1)->dump_to_log(logptr, "Tile");
+        //logptr->newline();
 #endif
 
         uint64_t result = tip_offset;

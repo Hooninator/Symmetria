@@ -11,16 +11,15 @@
 
 using namespace combblas;
 
+#define THREADED
+#define _OPENMP
+
 #ifdef TIMING
 double cblas_alltoalltime;
 double cblas_allgathertime;
 #endif
 
-#ifdef _OPENMP
 int cblas_splits = omp_get_max_threads();
-#else
-int cblas_splits = 1;
-#endif
 
 #define ElementType double
 
@@ -66,7 +65,8 @@ int main(int argc, char ** argv)
 		PSpMat<double>::MPI_DCCols C(fullWorld);
 
 		A.ParallelReadMM(Aname, true, maximum<double>());
-		B.ParallelReadMM(Bname, true, maximum<double>());
+        B = A;
+        B.Transpose();
 
 		A.PrintInfo();
 
