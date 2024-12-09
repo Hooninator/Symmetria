@@ -170,7 +170,6 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     
 #ifdef DEBUG
     logptr->OFS()<<"START READING"<<std::endl;
-    logptr->newline();
 #endif
 
     using CooTripleVec = std::vector<std::tuple<IT, IT, DT>>;
@@ -221,8 +220,12 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     /* Begin MPI IO */
     MPI_File file_handle;
-    MPI_File_set_errhandler(file_handle, MPI_ERRORS_ARE_FATAL); //Kill if can't open file 
-    MPI_File_open(MPI_COMM_WORLD, path, MPI_MODE_RDONLY, MPI_INFO_NULL, &file_handle);
+    int success = MPI_File_open(MPI_COMM_WORLD, path, MPI_MODE_RDONLY, MPI_INFO_NULL, &file_handle);
+    if (success != MPI_SUCCESS)
+    {
+        std::cerr<<"Error: "<<path<<" does not exist\n";
+        exit(1);
+    }
 
     /* Compute offset info */
     MPI_Offset total_bytes;
@@ -244,6 +247,9 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
 #ifdef DEBUG
     read_tuples->dump_to_log(logptr, "Tuples read from file");
+    int total_tuples = read_tuples->get_nnz();
+    MPI_Allreduce(MPI_IN_PLACE, &total_tuples, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    logptr->OFS()<<"Total tuples read: "<<total_tuples<<std::endl;
 #endif
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -266,7 +272,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
 #ifdef DEBUG
     logptr->OFS()<<"Local matrix"<<std::endl;
-    local_tuples->dump_to_log(logptr);
+    //local_tuples->dump_to_log(logptr);
 #endif
 
     /* Set local csr arrays */

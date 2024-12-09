@@ -69,7 +69,7 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
     dCSR<DT> C;
     SR semiring;
 
-    const IT m_threshold = 100; //GALATIC explodes if matrices are small
+    const IT m_threshold = 10; //GALATIC explodes if matrices are small
     if (A.rows < m_threshold || A_t.rows < m_threshold)
     {
         //CPU multiply for now
@@ -106,7 +106,7 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
                                                      InputElementsPerThreads, RetainElementsPerThreads,
                                                      MaxChunksToMerge, MaxChunksGeneralizedMerge, 
                                                      MergePathOptions );
-        ExecutionStats stats; //TODO: Do I have to have this
+        ExecutionStats stats; 
 
         /* Do multiply */
         ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, false, semiring);
@@ -114,7 +114,6 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
 
     nnz = C.nnz;
 
-    //dump_dCSR_to_log(logptr, C);
     CUDA_CHECK(cudaDeviceSynchronize());
 
     /* Convert to device triples */

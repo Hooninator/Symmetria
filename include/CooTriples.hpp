@@ -190,7 +190,7 @@ public:
 
     bool is_tril(const Triple& t, const IT tile_rows)
     {
-        return std::get<1>(t) <= tile_rows;
+        return std::get<1>(t) < tile_rows;
     }
 
 

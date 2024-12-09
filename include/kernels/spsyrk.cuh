@@ -85,7 +85,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 #endif
 
         } else {
-            A_recv.alloc(A.get_loc_rows(), A.get_loc_cols(), A.get_tile_sizes()[k]);
+            A_recv.alloc(A.get_tile_rows()[k], A.get_loc_cols(), A.get_tile_sizes()[k]);
         }
 
 #ifdef TIMING

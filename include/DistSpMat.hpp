@@ -24,7 +24,8 @@ public:
     DistSpMat(const IT m, const IT n, const IT nnz,
               std::shared_ptr<ProcMap> proc_map):
         m(m), n(n), nnz(nnz), proc_map(proc_map),
-        tile_sizes(proc_map->get_grid_size())
+        tile_sizes(proc_map->get_grid_size()),
+        tile_rows(proc_map->get_grid_size())
     {
         MPI_Barrier(proc_map->get_world_comm());
     }
@@ -52,6 +53,12 @@ public:
         IT send = this->loc_nnz;
         MPI_Allgather(&(send), 1, MPIType<IT>(), 
                         this->tile_sizes.data(), 1, MPIType<IT>(), 
+                        this->proc_map->get_world_comm());
+
+        /* Again for global tile rows array */
+        send = this->loc_m;
+        MPI_Allgather(&(send), 1, MPIType<IT>(), 
+                        this->tile_rows.data(), 1, MPIType<IT>(), 
                         this->proc_map->get_world_comm());
 
         CUDA_CHECK(cudaMalloc(&this->ds_vals, this->loc_nnz * sizeof(DT)));
@@ -226,6 +233,7 @@ public:
     inline IT * get_rowptrs() const {return ds_rowptrs;}
 
     inline std::vector<IT> get_tile_sizes() const {return tile_sizes;}
+    inline std::vector<IT> get_tile_rows() const {return tile_rows;}
 
     template <typename IT2, typename DT2>
     friend bool operator==(DistSpMat<IT2, DT2>& lhs, DistSpMat<IT2, DT2>& rhs);
@@ -241,6 +249,7 @@ protected:
     IT * ds_colinds, * ds_rowptrs;
 
     std::vector<IT> tile_sizes;
+    std::vector<IT> tile_rows;
 
 };
 
@@ -293,8 +302,15 @@ public:
 
     void set_loc_dims()
     {
-        this->loc_m = std::ceil(static_cast<double>(this->m) / this->proc_map->get_px());
+        //this->loc_m = std::ceil(static_cast<double>(this->m) / this->proc_map->get_px());
+        this->loc_m = this->m / this->proc_map->get_px();
         this->loc_n = this->n;
+
+        if (this->proc_map->get_rank()==this->proc_map->get_px() - 1) {
+            IT edge_size = std::abs( (std::ceil(static_cast<double>(this->m) / this->proc_map->get_px()) - 
+                                        this->loc_m) );
+            this->loc_m += edge_size;
+        }
     }
 
 
@@ -304,13 +320,28 @@ public:
         IT col = std::get<1>(t);
         DT val = std::get<2>(t);
 
-        return {row % this->loc_m, col, val};
+        IT loc_m_noedge = this->m / this->proc_map->get_px();
+
+        //TODO: move all this edge case logic into some utility functions
+        IT edge_size = std::abs( (std::ceil(static_cast<double>(this->m) / this->proc_map->get_px())) -  
+                                    (loc_m_noedge));
+        IT loc_row = row % loc_m_noedge;
+        IT mp = (this->m / loc_m_noedge) * loc_m_noedge;
+        if (row >= mp)
+            loc_row = (loc_m_noedge + edge_size - 1);
+
+#ifdef DEBUG
+        logptr->OFS()<<row<<","<<loc_row<<std::endl;
+#endif
+
+        return {loc_row, col, val};
     }
 
 
     int owner(const Triple& t)
     {
-        return std::get<0>(t) / this->loc_m;
+        IT loc_m_noedge = this->m / this->proc_map->get_px();
+        return std::min( (std::get<0>(t) / loc_m_noedge), (unsigned int) (this->proc_map->get_px() - 1));
     }
 
 
