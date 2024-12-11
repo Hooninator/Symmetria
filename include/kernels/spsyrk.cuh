@@ -50,7 +50,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     /* Create transposed version of my local block row */
     auto A_t_loc = transpose_outofplace(A_loc);
 
-#ifdef DEBUG
+#if DEBUG >= 2
     logptr->OFS()<<"Local A"<<std::endl;
     dump_dCSR_to_log(logptr, A_loc);
 #endif
@@ -69,7 +69,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     {
         if (k > rank) break;
 
-#ifdef DEBUG
+#if DEBUG
         logptr->OFS()<<"Beginning iteration "<<k<<std::endl;
 #endif
 
@@ -79,7 +79,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         if (k==rank) {
             A_recv = A_loc;
 
-#ifdef DEBUG_LOG
+#if DEBUG >= 2
             logptr->OFS()<<"Sending round "<<k<<std::endl;
             dump_dCSR_to_log(logptr, A_recv);
 #endif
@@ -109,7 +109,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
         timer_ptr->stop_timer("Broadcast");
 #endif
 
-#ifdef DEBUG
+#if DEBUG >= 2
         logptr->OFS()<<"Received round "<<k<<std::endl;
         dump_dCSR_to_log(logptr, A_recv);
 #endif
@@ -169,7 +169,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     timer_ptr->stop_timer("Merge");
 #endif
 
-#ifdef DEBUG
+#if DEBUG >= 2
     C_final.dump_to_log(logptr, "Final output");
 #endif
 
@@ -214,7 +214,7 @@ template <typename SR, typename IT, typename DT, typename P>
 DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 {
 
-#ifdef DEBUG
+#if DEBUG
     logptr->OFS()<<"START SPSYRK"<<std::endl;
 #endif
 
@@ -238,7 +238,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         int i = tile_inds.first;
         int j = tile_inds.second;
 
-#ifdef DEBUG
+#if DEBUG
         logptr->OFS()<<std::endl; 
         logptr->OFS()<<"Tile indices: "<<i<<","<<j<<std::endl;; 
 #endif
@@ -260,7 +260,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             
             STOP_TIMER("TileGet");
 
-#ifdef DEBUG
+#if DEBUG >= 2
             A_tile.dump_to_log(logptr, "A_tile");
             B_tile.dump_to_log(logptr, "B_tile");
             logptr->newline();
@@ -304,7 +304,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 
         total_nnz += C_tile.get_nnz();
 
-#ifdef DEBUG
+#if DEBUG >= 2
         C_tile.dump_to_log(logptr, "C tile post merge");
 #endif
 
@@ -333,7 +333,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 
     DEBUG_PRINT("DONE");
 
-#ifdef DEBUG
+#if DEBUG
     logptr->OFS()<<"END SPSYRK"<<std::endl;
 #endif
 

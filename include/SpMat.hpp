@@ -37,12 +37,12 @@ public:
 
 		size_t offset_colinds = aligned_offset<DT>(nnz * sizeof(DT));  
 		size_t offset_rowptrs = aligned_offset<DT>(offset_colinds + nnz * sizeof(IT)) ;
-#ifdef DEBUG
-        //logptr->OFS()<<"Offset colinds: "<<offset_colinds<<std::endl;
-        //logptr->OFS()<<"Offset rowptrs: "<<offset_rowptrs<<std::endl;
-        //logptr->OFS()<<"Triples right before CSR"<<std::endl;
-        //triples.dump_to_log(logptr);
-        //logptr->newline();
+#if DEBUG >= 2
+        logptr->OFS()<<"Offset colinds: "<<offset_colinds<<std::endl;
+        logptr->OFS()<<"Offset rowptrs: "<<offset_rowptrs<<std::endl;
+        logptr->OFS()<<"Triples right before CSR"<<std::endl;
+        triples.dump_to_log(logptr);
+        logptr->newline();
 #endif
 
         if (nnz==0) {
@@ -93,20 +93,10 @@ public:
             }
         );
 
-#ifdef DEBUG
-        //logptr->log_vec(row_nnz, "Row nnz");
-#endif
-
-#ifdef DEBUG
-        //logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 0");
-#endif
 
         thrust::device_vector<IT> d_row_nnz(row_nnz.begin(), row_nnz.end());
         thrust::inclusive_scan(d_row_nnz.begin(), d_row_nnz.end(), 
                                 thrust::device_pointer_cast(this->ds_rowptrs)+1);
-#ifdef DEBUG
-        //logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 1");
-#endif
 
         thrust::fill_n(d_row_nnz.begin(), rows, IT(0));
 
@@ -122,9 +112,6 @@ public:
                                         this->ds_vals, this->ds_colinds, this->ds_rowptrs,
                                         triples.get_nnz());
         CUDA_CHECK(cudaDeviceSynchronize());
-#ifdef DEBUG
-        //logptr->log_device_array(this->ds_rowptrs, (this->m)+1, "Rowptrs 2");
-#endif
 
         CUDA_FREE_SAFE(d_triples);
     }
@@ -145,7 +132,7 @@ public:
         CUDA_CHECK(cudaMemcpy(h_colinds.data(), ds_colinds, sizeof(IT)*this->nnz, cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_rowptrs.data(), ds_rowptrs, sizeof(IT)*(this->m + 1), cudaMemcpyDeviceToHost));
 
-#ifdef DEBUG
+#if DEBUG >= 2
         logptr->log_vec(h_vals, "host values");
         logptr->log_vec(h_colinds, "host colinds");
         logptr->log_vec(h_rowptrs, "host rowptrs");
@@ -213,14 +200,14 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
     CooTriples<IT, DT> lhs_triples(h_lhs_vals, h_lhs_colinds, h_lhs_rowptrs, lhs.nnz, lhs.m);
     CooTriples<IT, DT> rhs_triples(h_rhs_vals, h_rhs_colinds, h_rhs_rowptrs, rhs.nnz, rhs.m);
 
-#ifdef DEBUG
+#if DEBUG >= 2
     lhs_triples.dump_to_log(logptr, "LHS");
     rhs_triples.dump_to_log(logptr, "RHS");
 #endif
 
     /* Dimensions and nnz */
     if (lhs.nnz != rhs.nnz || lhs.m != rhs.m) {
-#ifdef DEBUG
+#if DEBUG
         logptr->OFS()<<"dims are messed up "<<lhs.m<<","<<rhs.m<<std::endl;
 #endif
         return false;

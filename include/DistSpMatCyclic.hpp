@@ -92,11 +92,6 @@ public:
 
             IT row_e = false ? col_edge_size(i) : row_edge_size(i);
             IT col_e = false ? row_edge_size(i) : col_edge_size(i);
-#ifdef DEBUG
-            //logptr->OFS()<<"nnz in this tile: "<<tile_triples[i].get_nnz()<<std::endl;
-            //logptr->OFS()<<"rows in this tile: "<<row_size + row_e<<std::endl;
-            //logptr->OFS()<<"cols in this tile: "<<col_size + col_e<<std::endl;
-#endif
             tile_rows[p.first * ntiles + p.second] = row_size + row_e;
             tile_cols[p.first * ntiles + p.second] = col_size + col_e;
 
@@ -120,7 +115,7 @@ public:
                       MPIType<IT>(), MPI_SUM, 
                       this->proc_map->get_world_comm());
 
-#ifdef DEBUG
+#if DEBUG >= 2
         //logptr->log_vec(tile_nnz, "tile nnz");
         //logptr->log_vec(tile_rows, "tile rows");
         //logptr->log_vec(tile_cols, "tile cols");
@@ -154,7 +149,7 @@ public:
             window_offsets[p.first * ntiles + p.second] = offset;
         }
         
-#ifdef DEBUG
+#if DEBUG >= 2
         //logptr->log_vec(window_offsets, "Window offsets preallreduce");
         //logptr->newline();
 #endif
@@ -163,7 +158,7 @@ public:
                       window_offsets.data(), window_offsets.size(), 
                       MPIType<uint64_t>(), MPI_SUM, 
                       this->proc_map->get_world_comm());
-#ifdef DEBUG
+#if DEBUG >= 2
         //logptr->log_vec(window_offsets, "Window offsets");
         //logptr->newline();
 #endif
@@ -181,9 +176,9 @@ public:
         /* Where does that tile live in target's TileWindow? */
         uint64_t offset = window_offsets[i * ntiles + j];
 
-#ifdef DEBUG
-        //logptr->OFS()<<"Target PE: "<<target_pe<<std::endl;
-        //logptr->OFS()<<"Offset: "<<offset<<std::endl;
+#if DEBUG
+        logptr->OFS()<<"Target PE: "<<target_pe<<std::endl;
+        logptr->OFS()<<"Offset: "<<offset<<std::endl;
 #endif
 
 
@@ -361,7 +356,7 @@ public:
         if (std::get<1>(t) >= np)
             loc_j = this->nb + col_e - 1;
 
-#ifdef DEBUG
+#if DEBUG >= 2
         //logptr->OFS()<<"i: "<<std::get<0>(t)<<", j: "<<std::get<1>(t)<<std::endl;
         //logptr->OFS()<<"i: "<<loc_i<<", j: "<<loc_j<<std::endl;
 #endif

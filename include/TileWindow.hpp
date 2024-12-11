@@ -30,9 +30,9 @@ public:
     {
         local_matrices.emplace_back(m, n, triples, ds_buffer + tip_offset, transpose);
 
-#ifdef DEBUG
-        //(local_matrices.end()-1)->dump_to_log(logptr, "Tile");
-        //logptr->newline();
+#if DEBUG >= 2
+        (local_matrices.end()-1)->dump_to_log(logptr, "Tile");
+        logptr->newline();
 #endif
 
         uint64_t result = tip_offset;

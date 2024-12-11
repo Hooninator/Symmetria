@@ -45,7 +45,7 @@ public:
 
         DEBUG_PRINT("Local nnz in set coo: " + STR(this->loc_nnz));
 
-#ifdef DEBUG
+#if DEBUG >= 2
         triples->dump_to_log(logptr, "Setting from coo triples");
 #endif
 
@@ -260,7 +260,7 @@ bool operator==(DistSpMat<IT, DT>& lhs, DistSpMat<IT, DT>& rhs)
     auto A_lhs = make_dCSR_from_distspmat<DT>(lhs);
     auto A_rhs = make_dCSR_from_distspmat<DT>(rhs);
 
-#ifdef DEBUG
+#if DEBUG >= 2
     logptr->OFS()<<"CORRECT"<<std::endl;
     dump_dCSR_to_log(logptr, A_lhs);
     logptr->OFS()<<"COMPUTED"<<std::endl;
@@ -329,10 +329,6 @@ public:
         IT mp = (this->m / loc_m_noedge) * loc_m_noedge;
         if (row >= mp)
             loc_row = (loc_m_noedge + edge_size - 1);
-
-#ifdef DEBUG
-        logptr->OFS()<<row<<","<<loc_row<<std::endl;
-#endif
 
         return {loc_row, col, val};
     }

@@ -120,7 +120,7 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
     for (auto& tuple : tuples->get_triples()) {
         /* Map tuple to correct process */
         int target = A.owner(tuple);
-#ifdef DEBUG
+#if DEBUG >= 2
         logptr->OFS()<<tuples->to_str(tuple)<<" mapped to "<<target<<std::endl;
 #endif
         send_tuples[target].push_back(tuple);
@@ -168,7 +168,7 @@ template <typename IT, typename DT, typename Mat>
 void read_mm(const char * path, Mat& A, bool triangular=false)
 {
     
-#ifdef DEBUG
+#if DEBUG
     logptr->OFS()<<"START READING"<<std::endl;
 #endif
 
@@ -245,7 +245,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     /* Parse my lines */
     auto read_tuples = parse_mm_lines<IT, DT>(num_bytes, my_offset, buf, file_handle);
 
-#ifdef DEBUG
+#if DEBUG >= 2
     read_tuples->dump_to_log(logptr, "Tuples read from file");
     int total_tuples = read_tuples->get_nnz();
     MPI_Allreduce(MPI_IN_PLACE, &total_tuples, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -259,7 +259,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     /* Distribute tuples according to matrix distribution */
     auto local_tuples = distribute_tuples<IT, DT>(read_tuples, A);
 
-#ifdef DEBUG_LOG
+#if DEBUG >= 2
     /*
     logptr->OFS()<<"Local matrix before remapping"<<std::endl;
     local_tuples->dump_to_log(logptr);
@@ -270,9 +270,9 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     std::transform(local_tuples->begin(), local_tuples->end(), local_tuples->begin(),
         [&](auto& tuple) {return A.map_glob_to_local(tuple);});
 
-#ifdef DEBUG
+#if DEBUG >= 2
     logptr->OFS()<<"Local matrix"<<std::endl;
-    //local_tuples->dump_to_log(logptr);
+    local_tuples->dump_to_log(logptr);
 #endif
 
     /* Set local csr arrays */
@@ -286,7 +286,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     DEBUG_PRINT("Done reading matrix");
     delete local_tuples;
 
-#ifdef DEBUG
+#if DEBUG
     logptr->OFS()<<"DONE READING"<<std::endl;
     logptr->newline();
 #endif
