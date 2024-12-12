@@ -226,7 +226,7 @@ public:
     }
 
 
-    int row_edge_size(const int tidx)
+    IT row_edge_size(const int tidx)
     {
         if (this->proc_map->get_col_rank() != this->proc_map->get_px() - 1)
             return 0;
@@ -237,7 +237,7 @@ public:
     }
 
 
-    int col_edge_size(const int tidx)
+    IT col_edge_size(const int tidx)
     {
         if (this->proc_map->get_row_rank() != this->proc_map->get_py() - 1)
             return 0;

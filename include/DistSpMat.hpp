@@ -307,8 +307,9 @@ public:
         this->loc_n = this->n;
 
         if (this->proc_map->get_rank()==this->proc_map->get_px() - 1) {
-            IT edge_size = std::abs( (std::ceil(static_cast<double>(this->m) / this->proc_map->get_px()) - 
-                                        this->loc_m) );
+            //IT edge_size = std::abs( (std::ceil(static_cast<double>(this->m) / this->proc_map->get_px()) - 
+            //                            this->loc_m) );
+            IT edge_size = this->m - this->loc_m * this->proc_map->get_px();
             this->loc_m += edge_size;
         }
     }
@@ -323,12 +324,13 @@ public:
         IT loc_m_noedge = this->m / this->proc_map->get_px();
 
         //TODO: move all this edge case logic into some utility functions
-        IT edge_size = std::abs( (std::ceil(static_cast<double>(this->m) / this->proc_map->get_px())) -  
-                                    (loc_m_noedge));
+        //IT edge_size = std::abs( (std::ceil(static_cast<double>(this->m) / this->proc_map->get_px())) -  
+        //                            (loc_m_noedge));
+        IT edge_size = this->m - loc_m_noedge * this->proc_map->get_px(); 
         IT loc_row = row % loc_m_noedge;
         IT mp = (this->m / loc_m_noedge) * loc_m_noedge;
         if (row >= mp)
-            loc_row = (loc_m_noedge + edge_size - 1);
+            loc_row = row - mp + loc_m_noedge;
 
         return {loc_row, col, val};
     }

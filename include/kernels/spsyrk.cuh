@@ -121,7 +121,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
         /* If rank > k, multiply the tile I just received */
         IT nnzC = 0;
-        IT offset = k * (A.get_rows() / p);
+        IT offset = k * (A.get_rows() / p);//k*A_t_loc.cols;
         auto d_C_acc = local_spgemm_galatic<SR>(A_recv, A_t_loc, nnzC, offset);
         CUDA_CHECK(cudaDeviceSynchronize());
 
