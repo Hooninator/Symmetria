@@ -202,19 +202,29 @@ bool operator==(const SpMat<IT, DT>& lhs, const SpMat<IT, DT>& rhs)
     CooTriples<IT, DT> rhs_triples(h_rhs_vals, h_rhs_colinds, h_rhs_rowptrs, rhs.nnz, rhs.m);
 
 #if DEBUG >= 2
-    lhs_triples.dump_to_log(logptr, "LHS");
-    rhs_triples.dump_to_log(logptr, "RHS");
+    logptr->OFS()<<"nnz correct: "<<lhs.nnz<<std::endl;
+    lhs_triples.dump_to_log(logptr, "CORRECT");
+    logptr->newline();
+    logptr->OFS()<<"nnz computed: "<<rhs.nnz<<std::endl;
+    rhs_triples.dump_to_log(logptr, "COMPUTED");
+    logptr->newline();
 #endif
 
     /* Dimensions and nnz */
     if (lhs.nnz != rhs.nnz || lhs.m != rhs.m) {
 #if DEBUG
         logptr->OFS()<<"dims are messed up "<<lhs.m<<","<<rhs.m<<std::endl;
+        logptr->OFS()<<"nnz are messed up "<<lhs.nnz<<","<<rhs.nnz<<std::endl;
+        logptr->OFS()<<"Tile incorrect dim issue"<<std::endl;
 #endif
         return false;
     }
 
     bool correct = (lhs_triples == rhs_triples);
+#if DEBUG
+    if (! correct)
+        logptr->OFS()<<"Tile incorrect value issue"<<std::endl;
+#endif
 
     delete[] h_lhs_vals;
     delete[] h_rhs_vals;

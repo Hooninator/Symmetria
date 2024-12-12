@@ -236,6 +236,10 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     int num_bytes = ((total_bytes - header_offset) / n_pes);  
     char *buf = new char[(size_t)(num_bytes*1.5 + 1)];//*1.5 ensures we have enough space to read in edge lines
                                                       //
+    if (my_pe==n_pes-1 && (total_bytes - header_offset)%n_pes!=0)
+    {
+        num_bytes += (total_bytes - header_offset) -  (( (total_bytes - header_offset) / n_pes) * n_pes);
+    }
     MPI_File_read_at(file_handle, my_offset, buf, num_bytes, MPI_CHAR, MPI_STATUS_IGNORE);
 
     MPI_Barrier(MPI_COMM_WORLD);

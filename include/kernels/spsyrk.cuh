@@ -368,6 +368,8 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, proc_map->get_world_comm());
 
+    DEBUG_PRINT("Total nnz: " + STR(total_nnz));
+
     DistSpMatCyclic2D<IT, DT, P> C(A.get_rows(), A.get_rows(), total_nnz, A.get_mb(), A.get_mb(), proc_map);
 
     DEBUG_PRINT("Making output matrix");

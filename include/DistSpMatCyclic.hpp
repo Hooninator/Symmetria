@@ -301,6 +301,9 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
 
     for (int i=0; i<t; i++)
     {
+#if DEBUG
+        logptr->OFS()<<"Tile index "<<i<<std::endl;
+#endif
         auto const& lhs_tile = lhs_tiles[i];
         auto const& rhs_tile = rhs_tiles[i];
 
@@ -309,6 +312,10 @@ bool operator==(DistSpMatCyclic<IT, DT, P>& lhs, DistSpMatCyclic<IT, DT, P>& rhs
         bool equals = (lhs_tile == rhs_tile);
 
         correct = correct && equals;
+
+#if DEBUG
+        logptr->newline();
+#endif
 
     }
 
@@ -357,9 +364,9 @@ public:
         IT np = (this->n / this->nb) * this->nb;
 
         if (std::get<0>(t) >= mp)
-            loc_i = this->mb + row_e - 1;
+            loc_i = this->mb + (std::get<0>(t) - mp);
         if (std::get<1>(t) >= np)
-            loc_j = this->nb + col_e - 1;
+            loc_j = this->nb + (std::get<1>(t) - np);
 
 #if DEBUG >= 2
         //logptr->OFS()<<"i: "<<std::get<0>(t)<<", j: "<<std::get<1>(t)<<std::endl;
