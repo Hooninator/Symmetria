@@ -60,7 +60,8 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
     /* COO triples on host used to store C */
     std::vector<std::tuple<IT, IT, DT>*> C_products;
-    IT * C_nnz_arr = new IT[rank+1];
+    //IT * C_nnz_arr = new IT[rank+1];
+    std::vector<IT> C_nnz_arr;
         
     DEBUG_PRINT("Beginning main loop");
 
@@ -119,11 +120,20 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 #endif
 
         /* If rank > k, multiply the tile I just received */
-        IT nnzC;
+        IT nnzC = 0;
         IT offset = k * (A.get_rows() / p);
         auto d_C_acc = local_spgemm_galatic<SR>(A_recv, A_t_loc, nnzC, offset);
         CUDA_CHECK(cudaDeviceSynchronize());
-        C_nnz_arr[k] = nnzC;
+
+        if(nnzC==0)
+        {
+            if (k != rank)
+                A_recv.reset();
+            delete requests;
+            continue;
+        }
+
+        C_nnz_arr.push_back(nnzC);
 
 #ifdef TIMING
         timer_ptr->stop_timer("LocalMultiply");
@@ -160,7 +170,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
     /* Merge output tuples */
 	SR semiring;
-    auto C_final = merge_combblas<SR>(C_products, C_nnz_arr, 
+    auto C_final = merge_combblas<SR>(C_products, C_nnz_arr.data(), 
                                            A.get_loc_rows(), A.get_rows());
 
     DEBUG_PRINT("Done with merge");
@@ -183,7 +193,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
     MPI_Group_free(&world_group);
     clear_dCSR_ptrs(A_loc); //necessary to prevent destructor from freeing A
     clear_dCSR_ptrs(A_recv);
-    delete[] C_nnz_arr;
+    //delete[] C_nnz_arr;
 
 #ifdef TIMING
     timer_ptr->start_timer("OutputConstruction");
@@ -238,8 +248,9 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         int i = tile_inds.first;
         int j = tile_inds.second;
 
+        DEBUG_PRINT_ALL("Rank " + STR(rank) + " starting tile " + STR(tile_id));
+
 #if DEBUG
-        logptr->OFS()<<std::endl; 
         logptr->OFS()<<"Tile indices: "<<i<<","<<j<<std::endl;; 
 #endif
 
@@ -247,15 +258,23 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
         std::vector<std::tuple<IT, IT, DT>*> C_products;
         std::vector<IT> C_nnz_arr;
 
-        if (i > j) continue; //Skip if in strictly upper triangular region
+        //Skip if in strictly upper triangular region
+        if (i > j)
+        {
+            continue;
+        }
 
         for (int k=0; k<proc_map->get_ntiles(); k++)
         {
+#if DEBUG
+            logptr->OFS()<<"Iteration "<<k<<std::endl;
+#endif
             /* Get kth tile in prow i and prow j */
 
             START_TIMER("TileGet");
 
             SpMat<IT, DT> A_tile = A.get_tile_sync(i, k);
+            //TODO: If this one zero don't get the next one
             SpMat<IT, DT> B_tile = A.get_tile_sync(j, k);
             
             STOP_TIMER("TileGet");
@@ -263,11 +282,17 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 #if DEBUG >= 2
             A_tile.dump_to_log(logptr, "A_tile");
             B_tile.dump_to_log(logptr, "B_tile");
-            logptr->newline();
+#elif DEBUG
+            A_tile.dump_to_log_lite(logptr, "A_tile");
+            B_tile.dump_to_log_lite(logptr, "B_tile");
 #endif
+
 
             if (A_tile.get_nnz()==0 || B_tile.get_nnz()==0)
             {
+#if DEBUG
+                logptr->OFS()<<"Empty Tile"<<std::endl;
+#endif
                 A_tile.free();
                 B_tile.free();
                 continue;
@@ -281,9 +306,20 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
 
             STOP_TIMER("LocalMultiply");
 
+            if (my_nnz==0)
+            {
+#if DEBUG
+                logptr->OFS()<<"No output tuples"<<std::endl;
+#endif
+                A_tile.free();
+                B_tile.free();
+                continue;
+            }
+
+            //std::tuple<IT, IT, DT> * C_tuples = new std::tuple<IT, DT>[my_nnz];
             C_nnz_arr.push_back(my_nnz);
 
-            /* TODO: If i==j only copy lower triangle */
+            // TODO: If i==j only copy lower triangle 
 
             START_TIMER("TuplesMemcpy");
 
@@ -296,11 +332,22 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             A_tile.free();
             B_tile.free();
             CUDA_FREE_SAFE(C_tuples);
+
+            CUDA_CHECK(cudaDeviceSynchronize());
         }
+
+#if DEBUG
+        auto nnz_pre_merge = std::reduce(C_nnz_arr.begin(), C_nnz_arr.end(), 0);
+        logptr->OFS()<<"NNZ Pre merge "<<nnz_pre_merge<<std::endl;
+#endif
 
         START_TIMER("Merge");
         auto C_tile = merge_combblas<SR>(C_products, C_nnz_arr.data(), A.get_mb(), A.get_mb());
         STOP_TIMER("Merge");
+
+#if DEBUG
+        logptr->OFS()<<"C tile nnz: "<<C_tile.get_nnz()<<std::endl;
+#endif
 
         total_nnz += C_tile.get_nnz();
 
@@ -322,6 +369,8 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPIType<IT>(), MPI_SUM, proc_map->get_world_comm());
 
     DistSpMatCyclic2D<IT, DT, P> C(A.get_rows(), A.get_rows(), total_nnz, A.get_mb(), A.get_mb(), proc_map);
+
+    DEBUG_PRINT("Making output matrix");
 
     START_TIMER("CSR2COO");
     C.set_from_coo(C_tiles, true);

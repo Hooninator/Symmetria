@@ -96,7 +96,7 @@ public:
             tile_cols[p.first * ntiles + p.second] = col_size + col_e;
 
             window_size += aligned_tile_size(tile_triples[i].get_nnz(), 
-                                                row_size);
+                                                row_size + row_e);
         }
 
 
@@ -132,6 +132,12 @@ public:
         DEBUG_PRINT("Done");
 
         MPI_Barrier(proc_map->get_world_comm());
+#if DEBUG
+        for (int i=0; i<tile_nnz.size();i++)
+        {
+            logptr->OFS()<<"Input tile nnz: "<<tile_nnz[i]<<std::endl;
+        }
+#endif
 
     }
 
@@ -158,8 +164,8 @@ public:
                       window_offsets.data(), window_offsets.size(), 
                       MPIType<uint64_t>(), MPI_SUM, 
                       this->proc_map->get_world_comm());
-#if DEBUG >= 2
-        //logptr->log_vec(window_offsets, "Window offsets");
+#if DEBUG 
+        logptr->log_vec(window_offsets, "Window offsets");
         //logptr->newline();
 #endif
     }
@@ -180,7 +186,6 @@ public:
         logptr->OFS()<<"Target PE: "<<target_pe<<std::endl;
         logptr->OFS()<<"Offset: "<<offset<<std::endl;
 #endif
-
 
         /* How large is that tile? */
         uint64_t landing_zone_size = aligned_tile_size(tile_nnz[i*ntiles + j], tile_rows[i*ntiles + j]);

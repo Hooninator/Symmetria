@@ -30,7 +30,7 @@
 #include "utils/MPITypes.h"
 #include "utils/alignment.h"
 
-#define DEBUG 2
+#define DEBUG 1
 //#define DEBUG_LOG
 #define TIMING
 //#define THREADED //For combblas
@@ -83,7 +83,6 @@
     std::cout<<BRIGHT_CYAN\
              <<msg\
              <<RESET<<std::endl; \
-    MPI_Barrier(MPI_COMM_WORLD); \
 } while(0)
 #else
 #define DEBUG_PRINT(msg)

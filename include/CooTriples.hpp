@@ -16,7 +16,9 @@ public:
     using iterator = typename std::vector<Triple>::iterator;
     using const_iterator = typename std::vector<Triple>::const_iterator;
 
-    CooTriples(){}
+    CooTriples():
+    triples(0)
+    {}
 
     CooTriples(const std::vector<Triple>& triples):
         triples(triples)

@@ -15,7 +15,8 @@ class TileWindow
 public:
     TileWindow(uint64_t loc_window_size)
     {
-        loc_window_size += GAP_BYTES * 100;
+        //loc_window_size += GAP_BYTES * 100;
+        //loc_window_size *= 1.5; //Hack
         //NOTE: loc_window_size is assumed to be aligned properly
         MPI_Allreduce(&loc_window_size, &window_size, 1,
                         MPIType<uint64_t>(), MPI_MAX,
@@ -37,6 +38,12 @@ public:
 
         uint64_t result = tip_offset;
         tip_offset += (local_matrices.end()-1)->get_total_bytes() + GAP_BYTES;
+
+#if DEBUG
+        logptr->OFS()<<"Window size: "<<window_size<<std::endl;
+        logptr->OFS()<<"Tip offset: "<<tip_offset<<std::endl;
+#endif
+
         assert(tip_offset <= window_size);
 
         return result;

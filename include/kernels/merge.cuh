@@ -34,7 +34,8 @@ std::string to_str(const std::tuple<IT, IT, DT> t1)
 template <typename SR, typename IT, typename DT>
 CooTriples<IT, DT> merge_combblas(std::vector<std::tuple<IT, IT, DT> *> to_merge, const IT * nnz_arr, const IT rows, const IT cols)
 {
-#ifdef DEBUG
+
+#if DEBUG
     logptr->OFS()<<"MERGING TUPLES"<<std::endl;
 #endif
 
@@ -49,12 +50,14 @@ CooTriples<IT, DT> merge_combblas(std::vector<std::tuple<IT, IT, DT> *> to_merge
 
     for (int i=0; i<to_merge.size(); i++)
     {
-#ifdef DEBUG
+
+#if DEBUG >= 2
         for (int j=0; j<nnz_arr[i]; j++)
         {
             logptr->OFS()<<to_str(to_merge[i][j])<<std::endl;
         }
 #endif
+
         auto t = to_merge[i];
         auto sptuples = make_sptuples(t, nnz_arr[i], rows, cols);
         sp_tuples_vec.push_back(sptuples);
@@ -62,7 +65,7 @@ CooTriples<IT, DT> merge_combblas(std::vector<std::tuple<IT, IT, DT> *> to_merge
     
     auto merged_sptuples = MultiwayMerge<SR>(sp_tuples_vec, rows, cols, true);
 
-#ifdef DEBUG
+#if DEBUG
     logptr->OFS()<<"DONE MERGING TUPLES"<<std::endl;
     logptr->OFS()<<std::endl;
 #endif

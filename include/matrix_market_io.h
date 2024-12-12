@@ -245,11 +245,15 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
     /* Parse my lines */
     auto read_tuples = parse_mm_lines<IT, DT>(num_bytes, my_offset, buf, file_handle);
 
-#if DEBUG >= 2
-    read_tuples->dump_to_log(logptr, "Tuples read from file");
+#if DEBUG
+    logptr->OFS()<<"Local tuples read: "<<read_tuples->get_nnz()<<std::endl;
     int total_tuples = read_tuples->get_nnz();
     MPI_Allreduce(MPI_IN_PLACE, &total_tuples, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     logptr->OFS()<<"Total tuples read: "<<total_tuples<<std::endl;
+#endif
+
+#if DEBUG >= 2
+    read_tuples->dump_to_log(logptr, "Tuples read from file");
 #endif
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -258,6 +262,12 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     /* Distribute tuples according to matrix distribution */
     auto local_tuples = distribute_tuples<IT, DT>(read_tuples, A);
+#if DEBUG
+    logptr->OFS()<<"Local matrix nnz: "<<local_tuples->get_nnz();
+    int total_nnz = local_tuples->get_nnz();
+    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    logptr->OFS()<<"Total matrix nnz: " <<total_nnz<<std::endl;
+#endif
 
 #if DEBUG >= 2
     /*

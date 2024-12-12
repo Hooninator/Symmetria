@@ -112,9 +112,11 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
         ACSpGEMM::Multiply<SR>(A, A_t, C, DefaultTraits, stats, false, semiring);
     }
 
-    nnz = C.nnz;
-
     CUDA_CHECK(cudaDeviceSynchronize());
+
+    nnz = C.nnz;
+    if (nnz==0)
+        return nullptr;
 
     /* Convert to device triples */
     Triple * d_triples;

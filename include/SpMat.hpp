@@ -117,6 +117,13 @@ public:
     }
 
 
+    void dump_to_log_lite(Log * logfile,const char * prefix)
+    {
+        logfile->OFS()<<prefix<<std::endl;
+        logfile->OFS()<<"nnz: "<<this->nnz<<", m: "<<this->m<<", n: "<<this->n<<std::endl;
+    }
+
+
     void dump_to_log(Log * logfile, const char * prefix)
     {
         logfile->OFS()<<prefix<<std::endl;
@@ -131,12 +138,6 @@ public:
         CUDA_CHECK(cudaMemcpy(h_vals.data(), ds_vals, sizeof(DT)*this->nnz, cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_colinds.data(), ds_colinds, sizeof(IT)*this->nnz, cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_rowptrs.data(), ds_rowptrs, sizeof(IT)*(this->m + 1), cudaMemcpyDeviceToHost));
-
-#if DEBUG >= 2
-        logptr->log_vec(h_vals, "host values");
-        logptr->log_vec(h_colinds, "host colinds");
-        logptr->log_vec(h_rowptrs, "host rowptrs");
-#endif
 
         CooTriples<IT, DT> triples(&h_vals, &h_colinds, &h_rowptrs);
         triples.dump_to_log(logfile);
