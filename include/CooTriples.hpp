@@ -225,15 +225,14 @@ public:
     void dump_to_log(Log * logfile)
     {
         std::for_each(triples.begin(), triples.end(), [=](auto const& t)
-            { logfile->OFS()<<to_str(t)<<std::endl; } );
+            { logfile->OFS()<<to_str(t)<<'\n'; } );
     }
 
 
     void dump_to_log(Log * logfile, const char * prefix)
     {
         logfile->OFS()<<prefix<<std::endl;
-        std::for_each(triples.begin(), triples.end(), [=](auto const& t)
-            { logfile->OFS()<<to_str(t)<<std::endl; } );
+        this->dump_to_log(logfile);
     }
 
     template <typename IT2, typename DT2>

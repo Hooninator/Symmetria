@@ -120,6 +120,7 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 #endif
 
         /* If rank > k, multiply the tile I just received */
+        CUDA_CHECK(cudaDeviceSynchronize());
         IT nnzC = 0;
         IT offset = k * (A.get_rows() / p);//k*A_t_loc.cols;
         auto d_C_acc = local_spgemm_galatic<SR>(A_recv, A_t_loc, nnzC, offset);
@@ -166,6 +167,12 @@ DistSpMat1DBlockRow<IT, DT> spsyrk_bulksync_1d_rowblock(DistSpMat1DBlockRow<IT, 
 
 #ifdef TIMING
     timer_ptr->start_timer("Merge");
+#endif
+
+#if DEBUG
+    logptr->log_vec(C_nnz_arr, "NNZ arr");
+    auto nnz_pre_merge = std::reduce(C_nnz_arr.begin(), C_nnz_arr.end(), 0);
+    logptr->OFS()<<"NNZ Pre merge "<<nnz_pre_merge<<std::endl;
 #endif
 
     /* Merge output tuples */
@@ -279,7 +286,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             
             STOP_TIMER("TileGet");
 
-#if DEBUG >= 2
+#if DEBUG >= 1
             A_tile.dump_to_log(logptr, "A_tile");
             B_tile.dump_to_log(logptr, "B_tile");
 #elif DEBUG

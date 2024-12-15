@@ -40,9 +40,9 @@ __global__ void dCSR_to_triples(DT * d_vals, IT * d_colinds, IT * d_rowptrs,
                                 std::tuple<IT, IT, DT> * d_triples,
                                 const IT2 rows, const IT offset=0)
 {
-    const uint32_t tid = threadIdx.x + blockDim.x * blockIdx.x;
-    const uint32_t wid = tid / warpSize;
-    const uint32_t lid = tid % warpSize;
+    const uint64_t tid = threadIdx.x + blockDim.x * blockIdx.x;
+    const uint64_t wid = tid / warpSize;
+    const uint64_t lid = tid % warpSize;
 
     if (wid < rows) {
         IT start = d_rowptrs[wid];
@@ -122,9 +122,9 @@ std::tuple<IT, IT, DT> * local_spgemm_galatic(dCSR<DT>& A, dCSR<DT>& A_t,
     Triple * d_triples;
     CUDA_CHECK(cudaMalloc(&d_triples, sizeof(Triple)*nnz));
 
-    const uint32_t tpb = 256;
-    const uint32_t wpb = std::min(C.rows, static_cast<size_t>(tpb / 32));
-    const uint32_t blocks = std::ceil( static_cast<double>(C.rows) / static_cast<double>(wpb) );
+    const uint64_t tpb = 256;
+    const uint64_t wpb = std::min(C.rows, static_cast<size_t>(tpb / 32));
+    const uint64_t blocks = std::ceil( static_cast<double>(C.rows) / static_cast<double>(wpb) );
     dCSR_to_triples<<<blocks, tpb>>>(C.data, C.col_ids, C.row_offsets, d_triples, C.rows, offset);
     CUDA_CHECK(cudaDeviceSynchronize());
 

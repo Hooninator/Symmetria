@@ -233,9 +233,15 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     MPI_Offset my_offset = (header_offset) + (( ( total_bytes - header_offset ) / n_pes) * my_pe);
 
-    int num_bytes = ((total_bytes - header_offset) / n_pes);  
-    char *buf = new char[(size_t)(num_bytes*1.5 + 1)];//*1.5 ensures we have enough space to read in edge lines
-                                                      //
+
+    uint64_t num_bytes = ((total_bytes - header_offset) / n_pes);  
+    char *buf = new char[(uint64_t)(num_bytes*1.5 + 1)];//*1.5 ensures we have enough space to read in edge lines
+                                                        //
+#if DEBUG
+    logptr->OFS()<<"Total bytes: "<<total_bytes<<'\n';
+    logptr->OFS()<<"Num bytes: "<<num_bytes<<'\n';
+#endif
+
     if (my_pe==n_pes-1 && (total_bytes - header_offset)%n_pes!=0)
     {
         num_bytes += (total_bytes - header_offset) -  (( (total_bytes - header_offset) / n_pes) * n_pes);

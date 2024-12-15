@@ -43,7 +43,7 @@ public:
 
         this->loc_nnz = triples->get_nnz();
 
-        DEBUG_PRINT("Local nnz in set coo: " + STR(this->loc_nnz));
+        DEBUG_PRINT_ALL("Rank " + STR(this->proc_map->get_rank()) + " local nnz in set coo: " + STR(this->loc_nnz));
 
 #if DEBUG >= 2
         triples->dump_to_log(logptr, "Setting from coo triples");
