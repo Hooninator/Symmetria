@@ -20,6 +20,7 @@ public:
     triples(0)
     {}
 
+    //TODO: Make this a pointer to a vector
     CooTriples(const std::vector<Triple>& triples):
         triples(triples)
     {

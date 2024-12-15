@@ -151,16 +151,16 @@ CooTriples<IT, DT> * distribute_tuples(CooTriples<IT, DT> * tuples, Mat& A)
     }
 
 
-    CooTripleVec * recv_tuples = new CooTripleVec(std::reduce(recv_sizes.begin(),
+    CooTripleVec recv_tuples(std::reduce(recv_sizes.begin(),
                                                     recv_sizes.end(),
                                                     0));
     MPI_Alltoallv(send_buf->data(), send_sizes.data(), send_displs.data(),
                     MPIType<Triple>(),
-                    recv_tuples->data(), recv_sizes.data(), recv_displs.data(),
+                    recv_tuples.data(), recv_sizes.data(), recv_displs.data(),
                     MPIType<Triple>(),
                     MPI_COMM_WORLD);
     delete send_buf;
-    return new CooTriples<IT, DT>(*recv_tuples);
+    return new CooTriples<IT, DT>(recv_tuples);
 }
 
 
@@ -233,9 +233,8 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     MPI_Offset my_offset = (header_offset) + (( ( total_bytes - header_offset ) / n_pes) * my_pe);
 
-
-    uint64_t num_bytes = ((total_bytes - header_offset) / n_pes);  
-    char *buf = new char[(uint64_t)(num_bytes*1.5 + 1)];//*1.5 ensures we have enough space to read in edge lines
+    uint32_t num_bytes = ((total_bytes - header_offset) / n_pes);  
+    char *buf = new char[(size_t)(num_bytes*1.5 + 1)];//*1.5 ensures we have enough space to read in edge lines
                                                         //
 #if DEBUG
     logptr->OFS()<<"Total bytes: "<<total_bytes<<'\n';
@@ -268,12 +267,10 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    delete[] buf;
-
     /* Distribute tuples according to matrix distribution */
     auto local_tuples = distribute_tuples<IT, DT>(read_tuples, A);
 #if DEBUG
-    logptr->OFS()<<"Local matrix nnz: "<<local_tuples->get_nnz();
+    logptr->OFS()<<"Local matrix nnz: "<<local_tuples->get_nnz()<<'\n';
     int total_nnz = local_tuples->get_nnz();
     MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     logptr->OFS()<<"Total matrix nnz: " <<total_nnz<<std::endl;
@@ -305,6 +302,7 @@ void read_mm(const char * path, Mat& A, bool triangular=false)
 
     DEBUG_PRINT("Done reading matrix");
     delete local_tuples;
+    delete[] buf;
 
 #if DEBUG
     logptr->OFS()<<"DONE READING"<<std::endl;

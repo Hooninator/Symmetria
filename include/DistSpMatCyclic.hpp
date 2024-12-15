@@ -209,6 +209,8 @@ public:
         /* Unregister landing zone */
         NVSHMEM_CHECK(nvshmemx_buffer_unregister(d_landing_zone));
 
+        nvshmem_quiet();
+
         /* Make the SpMat from the landing zone */
         return SpMat<IT, DT>(tile_rows[i*ntiles + j], tile_cols[i*ntiles + j], tile_nnz[i*ntiles + j],
                                 d_landing_zone);

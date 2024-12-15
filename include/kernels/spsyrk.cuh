@@ -283,10 +283,10 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
             SpMat<IT, DT> A_tile = A.get_tile_sync(i, k);
             //TODO: If this one zero don't get the next one
             SpMat<IT, DT> B_tile = A.get_tile_sync(j, k);
-            
+
             STOP_TIMER("TileGet");
 
-#if DEBUG >= 1
+#if DEBUG >= 2
             A_tile.dump_to_log(logptr, "A_tile");
             B_tile.dump_to_log(logptr, "B_tile");
 #elif DEBUG
@@ -323,7 +323,7 @@ DistSpMatCyclic2D<IT, DT, P> spsyrk_cyclic_2d(DistSpMatCyclic2D<IT, DT, P>& A)
                 continue;
             }
 
-            //std::tuple<IT, IT, DT> * C_tuples = new std::tuple<IT, DT>[my_nnz];
+            //std::tuple<IT, IT, DT> * C_tuples = new std::tuple<IT,IT, DT>[my_nnz];
             C_nnz_arr.push_back(my_nnz);
 
             // TODO: If i==j only copy lower triangle 
