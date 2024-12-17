@@ -8,6 +8,7 @@ json
 cudatoolkit 12.2
 cmake 3.30.2
 gcc 12.3
+CrayMPICH 8.23
 
 ## Building Symmetria ##
 
