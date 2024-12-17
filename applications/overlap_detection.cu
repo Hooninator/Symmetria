@@ -1,4 +1,5 @@
 #include "Symmetria.hpp"
+
 using namespace symmetria;
 
 typedef unsigned int IT;
