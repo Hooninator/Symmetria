@@ -1,0 +1,10 @@
+[submodule "deps/CombBLAS"]
+	path = deps/CombBLAS
+	url = https://github.com/tf-mac/CombBLAS.git
+[submodule "deps/ELBA"]
+	path = deps/ELBA
+	url = https://github.com/PASSIONLab/ELBA
+	branch = GPU
+[submodule "deps/json"]
+	path = deps/json
+	url = https://github.com/nlohmann/json.git
