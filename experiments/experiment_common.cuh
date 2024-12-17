@@ -18,39 +18,67 @@ struct ExperimentConfig
     unsigned int rows, cols, nnz, ntrials;
     std::string name;
     std::string type;
-};
 
-
-/* Note: Does not handle ill formed commands well */
-ExperimentConfig parse_args(int argc, char ** argv, std::vector<const char *>& req_args)
-{
-    //TODO: Add tile args
-
-    std::map<std::string, const char *> args;
-    for (int i=1; i<argc; i+=2)
+    void parse_args(int argc, char ** argv, std::vector<const char *>& req_args)
     {
-        std::string key = std::string(argv[i]);
-        const char * val = (argv[i+1]);
-        args[key] = val;
-    }
+        //TODO: Add tile args
 
-    /* Check that everyone's there */
-    std::for_each(req_args.begin(), req_args.end(), [&](auto const& arg)
+        std::map<std::string, const char *> args;
+        for (int i=1; i<argc; i+=2)
         {
-            if (args.find(arg)==args.end()) {
-                std::cerr<<"Couldn't find "<<arg<<std::endl;
-                throw std::exception();
+            std::string key = std::string(argv[i]);
+            const char * val = (argv[i+1]);
+            args[key] = val;
+        }
+        
+        /* Check that everyone's there */
+        std::for_each(req_args.begin(), req_args.end(), [&](auto const& arg)
+            {
+                if (args.find(arg)==args.end()) {
+                    std::cerr<<"Couldn't find "<<arg<<std::endl;
+                    throw std::exception();
+                }
+            }
+        );
+
+        this->nnz= get_arg<unsigned int>("--nnz", args);
+        this->rows = get_arg<unsigned int>("--rows", args);
+        this->cols= get_arg<unsigned int>("--cols", args);
+        this->ntrials= get_arg<unsigned int>("--ntrials", args);
+
+        this->name = get_arg<std::string>("--name", args);
+        this->type = get_arg<std::string>("--type", args);
+            
+    };
+
+
+    template <typename T>
+    T get_arg(const char * s, std::map<std::string, const char *>& args)
+    {
+        if (args.find(s)==args.end())
+        {
+            std::cout<<"Couldn't find "<<s<<std::endl;
+            if constexpr (std::is_same<T, unsigned int>::value)
+            {
+                return 0;
+            }
+            else if constexpr (std::is_same<T, std::string>::value)
+            {
+                return "null";
             }
         }
-    );
-
-        
-    return ExperimentConfig {(unsigned int)std::atoi(args["--rows"]), 
-                            (unsigned int)std::atoi(args["--cols"]),
-                            (unsigned int)std::atoi(args["--nnz"]),
-                            (unsigned int)std::atoi(args["--ntrials"]),
-                            std::string(args["--name"]),
-                            std::string(args["--type"])};
+        else
+        {
+            if constexpr (std::is_same<T, unsigned int>::value)
+            {
+                return std::atoi(args[s]);
+            }
+            else if constexpr (std::is_same<T, std::string>::value)
+            {
+                return std::string(args[s]);
+            }
+        }
+    }
 };
 
 

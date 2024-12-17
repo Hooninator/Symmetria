@@ -45,7 +45,7 @@ void run_spsyrk_1d(ExperimentConfig& config)
             }
 
             /* Write timer to CSV */
-            std::string csv_name("timings_spsyrk_1d_"+STR(symmetria::my_pe)+".csv");
+            std::string csv_name("timings_spsyrk_1d_"+config.name+"_"+STR(symmetria::my_pe)+".csv");
 
             /* If first trial, clear the file, else append */
             if (i==0)
@@ -106,7 +106,7 @@ void run_spsyrk_2d(ExperimentConfig& config)
             }
 
             /* Write timer to CSV */
-            std::string csv_name("timings_spsyrk_2d_"+STR(symmetria::my_pe)+".csv");
+            std::string csv_name("timings_spsyrk_2d_"+config.name+"_"+STR(symmetria::my_pe)+".csv");
 
             /* If first trial, clear the file, else append */
             if (i==0)
@@ -127,9 +127,10 @@ int main(int argc, char ** argv)
 {
     std::vector<const char *> req_args {"--rows", "--cols", "--nnz", "--ntrials", "--name", "--type"};
 
-    ExperimentConfig config = parse_args(argc, argv, req_args);
-    std::string type(config.type);
+    ExperimentConfig config;
+    config.parse_args(argc, argv, req_args);
 
+    std::string type(config.type);
 
     if (type.compare("2d")==0) {
         run_spsyrk_2d(config);

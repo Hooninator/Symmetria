@@ -37,9 +37,9 @@ public:
 
 int main(int argc, char ** argv)
 {
-    std::vector<const char *> req_args {"--ntrials", "--name"};
-
-    ExperimentConfig config = parse_args(argc, argv, req_args);
+    std::vector<const char *> req_args {"--rows", "--cols", "--nnz", "--ntrials", "--name", "--type"};
+    ExperimentConfig config;
+    config.parse_args(argc, argv, req_args);
 
 	int nprocs, myrank;
 	MPI_Init(&argc, &argv);
@@ -70,53 +70,33 @@ int main(int argc, char ** argv)
 
 		A.PrintInfo();
 
-		double t1 = MPI_Wtime();
+        // Timers
+        symmetria::Timer timer;
+
+        timer.start_timer("CPUMult");
 		C = Mult_AnXBn_DoubleBuff<PTDOUBLEDOUBLE, double, PSpMat<double>::DCCols>(A, B);
 		MPI_Barrier(MPI_COMM_WORLD);
-		double t2 = MPI_Wtime();
+        timer.stop_timer("CPUMult");
 
-		std::cout << "Time for CPU mult: " << t2 - t1 << std::endl;
+		std::cout << "Time for CPU mult: " << timer.get_timer("CPUMult") << std::endl;
 		C.PrintInfo();
 		MPI_Barrier(MPI_COMM_WORLD);
 
-		t1 = MPI_Wtime();
+        /*
+        timer.start_timer("GPUMult");
 		C = Mult_AnXBn_DoubleBuff_CUDA<PTDOUBLEDOUBLE, double, PSpMat<double>::DCCols>(A, B);
 		MPI_Barrier(MPI_COMM_WORLD);
-		t2 = MPI_Wtime();
+        timer.stop_timer("GPUMult");
 
-		std::cout << "Time for GPU mult: " << t2 - t1 << std::endl;
+		std::cout << "Time for GPU mult: " << timer.get_timer("GPUMult") << std::endl;
 		C.PrintInfo();
 		MPI_Barrier(MPI_COMM_WORLD);
+        */
 
-		MPI_Pcontrol(1, "SpGEMM_DoubleBuff");
-		t1 = MPI_Wtime(); // initilize (wall-clock) timer
-		for (int i = 0; i < config.ntrials; i++)
-		{
-			C = Mult_AnXBn_DoubleBuff_CUDA<PTDOUBLEDOUBLE, ElementType, PSpMat<ElementType>::DCCols>(A, B);
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
-		t2 = MPI_Wtime();
-		MPI_Pcontrol(-1, "SpGEMM_DoubleBuff");
-		if (myrank == 0)
-		{
-			cout << "Double buffered CUDA multiplications finished" << endl;
-			printf("%.6lf seconds elapsed per iteration\n", (t2 - t1) / (double)config.ntrials);
-		}
+        const std::string csv_name("timings_combblas_2d_"+config.name+"_"+STR(myrank)+".csv");
+        timer.write_all_timers(csv_name, std::ofstream::trunc);
 
-		MPI_Pcontrol(1, "SpGEMM_DoubleBuff");
-		t1 = MPI_Wtime(); // initilize (wall-clock) timer
-		for (int i = 0; i < config.ntrials; i++)
-		{
-			C = Mult_AnXBn_DoubleBuff<PTDOUBLEDOUBLE, ElementType, PSpMat<ElementType>::DCCols>(A, B);
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
-		t2 = MPI_Wtime();
-		MPI_Pcontrol(-1, "SpGEMM_DoubleBuff");
-		if (myrank == 0)
-		{
-			cout << "Double buffered CPU multiplications finished" << endl;
-			printf("%.6lf seconds elapsed per iteration\n", (t2 - t1) / (double)config.ntrials);
-		}
+
 	}
 	MPI_Finalize();
 
