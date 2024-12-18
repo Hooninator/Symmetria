@@ -8,6 +8,7 @@ Several external pieces of software are required in order to build this project.
 - GALATIC (included in CombBLAS)
 - NVSHMEM 3.0.6 (https://docs.nvidia.com/nvshmem/release-notes-install-guide/install-guide/nvshmem-install-proc.html) 
 - json (https://github.com/nlohmann/json/tree/master) 
+- intel tbb (https://github.com/uxlfoundation/oneTBB)
 
 Build instructions for each of these libraries can be found in their respective repositores/installation guides, which I have linked.
 
@@ -19,6 +20,7 @@ Aside from these, ensure your system has the following pieces of software instal
 - cmake 3.30.2
 - GCC 12.3
 - CrayMPICH 8.1.28
+- OpenMP 4.5
 
 Additionally, in order to run Symmetria across multiple GPUs/nodes, it is necessary to have a job manager like SLURM installed.
 The scripts and instructions in this repo require a system with SLURM installed, so please make sure you have SLURM on your system.
