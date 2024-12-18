@@ -46,7 +46,9 @@ To process this file using ELBA, `cd` into the `deps/ELBA/build` directory and r
 
 `srun -n 16 ./elba -i /path/to/celegans20x_0001.fasta -k 17 --idxmap elba-celegans -c 670567 --alph dna --of overlap-celegans --af alignment-celegans -s 1 -O 100000 --afreq 100000 --ca 5`
 
-This will create a matrix in matrix market format called `celegans20x_0001.fasta.mtx`. Note that this repo already contains this matrix in `experiments/celegans/celegans.mtx`, in compliance with the instructions for the project. 
+This will create a matrix in matrix market format called `celegans20x_0001.fasta.mtx`. 
+Note that it is not possible to include this matrix file in the repository, as requested by the project description, since the file is too large for git to handle.
+Thankfully, recreating the matrix file is straightforward.
 
 If you would like to replace this provided matrix with the equivalent one you just generated, please `mkdir celegans && mv celegans20x_0001.fasta.mtx celegans/celegans.mtx`.
 
