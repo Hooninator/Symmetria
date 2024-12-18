@@ -7,4 +7,4 @@
 [submodule "deps/ELBA"]
 	path = deps/ELBA
 	url = https://github.com/Hooninator/ELBA.git
-	branch = GPU
+	branch = GPU-real
