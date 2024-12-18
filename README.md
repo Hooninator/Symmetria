@@ -52,7 +52,7 @@ This will create a matrix in matrix market format called `celegans20x_0001.fasta
 Note that it is not possible to include this matrix file in the repository, as requested by the project description, since the file is too large for git to handle.
 Thankfully, recreating the matrix file is straightforward.
 
-If you would like to replace this provided matrix with the equivalent one you just generated, please `mkdir celegans && mv celegans20x_0001.fasta.mtx celegans/celegans.mtx`.
+Please `mkdir celegans && mv celegans20x_0001.fasta.mtx celegans/celegans.mtx`.
 
 Finally, run `mkdir timings` from the `experiments` directory.
 
