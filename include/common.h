@@ -15,8 +15,6 @@
 #include <mpi.h>
 #include <omp.h>
 
-#include <shmem.h>
-#include <shmemx.h>
 #include <nvshmem.h>
 #include <nvshmemx.h>
 

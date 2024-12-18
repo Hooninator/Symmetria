@@ -50,7 +50,6 @@ void symmetria_init()
 
 void symmetria_finalize()
 {
-    shmem_finalize();
     nvshmem_finalize();
 
     MPI_Finalize();

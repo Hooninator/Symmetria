@@ -14,7 +14,7 @@ void run_spsyrk_1d(ExperimentConfig& config)
     {
 
         /* Config */
-        std::string path("../experiments/suitesparse/"+config.name+"/"+config.name+".mtx");
+        std::string path("../experiments/"+config.name+"/"+config.name+".mtx");
         unsigned int m = config.rows;
         unsigned int n = config.cols;
         unsigned int nnz = config.nnz;
@@ -67,7 +67,7 @@ void run_spsyrk_2d(ExperimentConfig& config)
     {
 
         /* Config */
-        std::string path("../experiments/suitesparse/"+config.name+"/"+config.name+".mtx");
+        std::string path("../experiments/"+config.name+"/"+config.name+".mtx");
         unsigned int m = config.rows;
         unsigned int n = config.cols;
         unsigned int nnz = config.nnz;
