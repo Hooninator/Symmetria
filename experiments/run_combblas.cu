@@ -47,7 +47,7 @@ int main(int argc, char ** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
 	{
-        std::string path("../experiments/suitesparse/"+config.name+"/"+config.name+".mtx");
+        std::string path("../experiments/"+config.name+"/"+config.name+".mtx");
 
 		string Aname(path);
 		string Bname(path);

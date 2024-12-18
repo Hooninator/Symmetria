@@ -7,8 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -rdc=true -ccbin ${CC} --expt-relaxed-constexpr ") 
 set(CMAKE_CUDA_ARCHITECTURES "80")
-#set(CMAKE_CXX_COMPILER "CC")
-#set(CMAKE_CUDA_HOST_COMPILER "CC")
+set(CMAKE_CXX_COMPILER "CC")
+set(CMAKE_CUDA_HOST_COMPILER "CC")
 
 #cmake_policy(SET CMP0074 OLD)
 project(SpSYRK VERSION 1.0.0 LANGUAGES CXX CUDA)
@@ -31,7 +31,7 @@ find_package(CUDAToolkit REQUIRED)
 set(NVSHMEM_HOME "$ENV{NVSHMEM_HOME}")
 
 set(GALATIC_HOME "./deps/CombBLAS/install/include/GALATIC/")
-set(COMBBLAS_HOME "./deps/CombBLAS/install")
+set(COMBBLAS_HOME $ENV{COMBBLAS_HOME})
 set(CUDATOOLKIT_HOME $ENV{CUDATOOLKIT_HOME})
 
 # Include directories
@@ -47,7 +47,7 @@ target_link_libraries(SpSYRK PUBLIC "-L${NVSHMEM_HOME}/lib" -lnvshmem -lrt)
 set_target_properties(SpSYRK PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 # Link CUDA libs
-target_link_libraries(SpSYRK PUBLIC CUDA::cublas CUDA::cusparse "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -fopenmp)
+target_link_libraries(SpSYRK PUBLIC CUDA::cublas CUDA::cusparse "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -fopenmp -ltbb)
 
 # Link MPI
 target_link_libraries(SpSYRK PUBLIC MPI::MPI_CXX)
@@ -67,7 +67,7 @@ macro(add_test name)
     set_target_properties(${name} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
     # Link CUDA libs
-    target_link_libraries(${name} PUBLIC CUDA::cublas CUDA::cusparse "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -fopenmp)
+    target_link_libraries(${name} PUBLIC CUDA::cublas CUDA::cusparse "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -fopenmp -ltbb)
 
     # Link MPI
     target_link_libraries(${name} PUBLIC MPI::MPI_CXX)
@@ -91,7 +91,7 @@ macro(add_experiment name)
     set_target_properties(${name} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
     # Link CUDA libs
-    target_link_libraries(${name} PUBLIC CUDA::cublas CUDA::cusparse "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -fopenmp)
+    target_link_libraries(${name} PUBLIC CUDA::cublas CUDA::cusparse "-L$ENV{MPICH_DIR}/gtl/lib" -lmpi_gtl_cuda -fopenmp -ltbb)
 
     # Link MPI
     target_link_libraries(${name} PUBLIC MPI::MPI_CXX)
